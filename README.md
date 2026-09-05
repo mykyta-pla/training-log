@@ -1,4 +1,6 @@
-# training-log
+# notaroutine
+
+notaroutine.life
 
 A personal training and health log. Static HTML and one stylesheet — no framework,
 no build step, no dependencies. Served by GitHub Pages.
@@ -9,6 +11,7 @@ N=1, not medical advice.
 
 ```
 index.html            home
+builder/              session builder — the only page with real JavaScript
 sessions/             session archive, newest first
   template.html       copy this to add a session
 training/             structure, mobility menu, variability-first programming
