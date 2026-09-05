@@ -348,7 +348,7 @@ footer a { color: var(--muted); }
 .loginput:focus { outline: none; border-color: var(--accent); }
 .loginput::placeholder { color: #5d6268; }
 
-.sessions .swap.hdel { margin-left: auto; }
+.sessions .swap.sdel { margin-left: auto; }
 .sessions li.hdetail { display: block; padding: 0 0 .9rem; border-bottom: 1px solid var(--line); }
 .hbody .sub-note { margin: .7rem 0 .25rem; }
 ul.plain { list-style: none; padding: 0; margin: 0 0 .3rem; }
@@ -447,3 +447,13 @@ button.link {
   text-decoration: underline; text-underline-offset: 2px;
 }
 button.link:hover { color: var(--text); }
+
+
+/* ---------- movement name as a YouTube search link ---------- */
+
+a.exn { color: var(--text); text-decoration: none; }
+a.exn:hover { color: var(--accent); }
+.ytic { margin-left: .32rem; vertical-align: -1px; opacity: .4; }
+a.exn:hover .ytic { opacity: 1; }
+.exrow.done a.exn { color: var(--muted); text-decoration: line-through; }
+.exrow.done .ytic { opacity: .25; }

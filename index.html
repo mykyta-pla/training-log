@@ -104,6 +104,7 @@
         <div class="chips" id="strfmt">
           <button type="button" class="chip on" data-v="straight">Straight sets</button>
           <button type="button" class="chip" data-v="circuit">Circuit</button>
+          <button type="button" class="chip" data-v="mix">Mix</button>
         </div>
       </div>
     </div>
@@ -290,7 +291,12 @@ const read  = (k, fb) => { try { const v = localStorage.getItem(k); return v ? J
 const write = (k, v)  => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} };
 const drop  = k       => { try { localStorage.removeItem(k); } catch (_) {} };
 
-let HISTORY = read(K.history, []);
+// One list, two states: 'planned' (built, not trained yet) and 'done' (trained).
+const newId = () => 's' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+let SESSIONS = read(K.history, []).map(x => ({...x, status: x.status || 'done', id: x.id || newId()}));
+const doneOnly     = () => SESSIONS.filter(x => x.status === 'done');
+const plannedOnly  = () => SESSIONS.filter(x => x.status === 'planned');
+const saveSessions = () => write(K.history, SESSIONS);
 
 /* =============================================================== helpers == */
 
@@ -389,7 +395,7 @@ function loadPrefs() {
 function recencyMap(depth) {
   const m = new Map();
   if (!depth) return m;
-  HISTORY.slice(0, depth).forEach((s, i) => {
+  doneOnly().slice(0, depth).forEach((s, i) => {
     (s.blocks || []).forEach(b => (b.items || []).forEach(it => {
       if (!m.has(it.name)) m.set(it.name, i);   // i = sessions ago
     }));
@@ -480,7 +486,18 @@ function build() {
       else S.note.push('No ' + seq[i % seq.length].replace('|',' or ') + ' movement available with those settings.');
     }
     let sub, est;
-    if (fmt === 'circuit') {
+    if (fmt === 'mix') {
+      // heavy work straight and rested; the small stuff circuits at the end
+      const comp = items.filter(x => x.pattern.split('|')[0] !== 'acc');
+      const acc  = items.filter(x => x.pattern.split('|')[0] === 'acc');
+      const sets = Math.max(2, Math.min(5, Math.round((m - acc.length * 4) / (Math.max(1, comp.length) * 3))));
+      comp.forEach(it => it.detail = sets + ' × ' + (REPS[it.pattern.split('|')[0]] || '8–12'));
+      acc.forEach(it => it.detail = 'circuit · 10–15');
+      sub = acc.length
+        ? `${sets} sets on the compounds, 2 min rest. Then the accessories as a circuit — 3 rounds, minimal rest.`
+        : `${sets} sets each, 2 min rest. Nothing light enough to circuit this time.`;
+      est = comp.length * sets * 3 + acc.length * 4;
+    } else if (fmt === 'circuit') {
       const rounds = Math.max(2, Math.min(6, Math.round(m / (items.length*1.6 + 1.5))));
       sub = rounds + ' rounds, minimal rest between exercises, 90 sec between rounds. 8–12 reps each.';
       items.forEach(it => it.detail = '8–12 reps');
@@ -528,10 +545,11 @@ let CURRENT = read(K.current, null);
 
 // last logged load for a movement, and how long ago
 function lastLog(name) {
-  for (let i = 0; i < HISTORY.length; i++) {
-    for (const b of HISTORY[i].blocks || []) {
+  const done = doneOnly();
+  for (let i = 0; i < done.length; i++) {
+    for (const b of done[i].blocks || []) {
       for (const it of b.items || []) {
-        if (it.name === name && it.load) return {load: it.load, date: HISTORY[i].date};
+        if (it.name === name && it.load) return {load: it.load, date: done[i].date};
       }
     }
   }
@@ -539,6 +557,9 @@ function lastLog(name) {
 }
 
 function render(S) {
+  // a session read back from storage may predate fields added later — fill them in
+  S.blocks = S.blocks || [];
+  S.note   = S.note   || [];
   CURRENT = S; write(K.current, S);
   const slack = S.slack ?? 0;
   const bits = [`${S.planned ?? S.total} min of work in your ${S.total}`];
@@ -569,7 +590,9 @@ function render(S) {
             <button type="button" class="tick${it.done ? ' on' : ''}" data-b="${bi}" data-i="${ii}"
               aria-pressed="${it.done ? 'true' : 'false'}" aria-label="Mark ${esc(it.name)} done"></button>
             <span class="ex">
-              <span class="exn">${esc(it.name)}</span>
+              <a class="exn" target="_blank" rel="noopener"
+                 href="https://www.youtube.com/results?search_query=${encodeURIComponent(it.name + ' exercise form')}"
+                 title="Search YouTube for this movement">${esc(it.name)}<svg class="ytic" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 7l8 5-8 5V7z" stroke-linejoin="round"/></svg></a>
               <span class="exd">${esc(it.detail)}</span>
               ${it.ago !== null && it.ago !== undefined ? `<span class="ago">${it.ago === 0 ? 'last session' : it.ago === 1 ? '2 sessions ago' : (it.ago+1)+' sessions ago'}</span>` : ''}
               ${prev ? `<span class="prev">last: ${esc(prev.load)}</span>` : ''}
@@ -587,10 +610,14 @@ function render(S) {
   });
 
   if (S.note.length) h += `<div class="note"><p>${S.note.map(esc).join('<br>')}</p></div>`;
+  const isSaved = !!S.savedId;
   h += `<div class="sessfoot">
           <div class="row">
-            <button type="button" id="done">Finish session</button>
-            <button type="button" class="ghost" id="again">Draw again</button>
+            ${isSaved
+              ? `<button type="button" id="done">Mark as done</button>
+                 <button type="button" class="ghost" id="back">Back to list</button>`
+              : `<button type="button" id="save">Save session</button>
+                 <button type="button" class="ghost" id="again">Draw again</button>`}
           </div>
           <p class="minor"><button type="button" class="link" id="copy">copy as text</button>
              · <button type="button" class="link" id="clear">discard</button></p>
@@ -600,20 +627,40 @@ function render(S) {
   const out = $('#out'); out.innerHTML = h; out.hidden = false;
 }
 
-function renderHistory() {
+function renderSessions() {
   const el = $('#hist');
-  if (!HISTORY.length) { el.innerHTML = ''; return; }
-  let h = `<hr><h2>History</h2>
-    <p class="hint">${HISTORY.length} completed session${HISTORY.length===1?'':'s'}. The newest
-    ones are what the builder steers away from.</p><ul class="sessions">`;
-  HISTORY.forEach((s, i) => {
-    const names = (s.blocks||[]).flatMap(b => (b.items||[]).map(x => x.name));
-    h += `<li><time datetime="${esc(s.date)}">${esc(fmtDate(s.date))}</time>
-            <a href="#" class="hopen" data-i="${i}">${esc(names.slice(0,3).join(', ') || 'session')}${names.length>3?' …':''}</a>
-            <button type="button" class="swap hdel" data-i="${i}">delete</button></li>
-          <li class="hdetail" id="hd${i}" hidden><div class="hbody"></div></li>`;
-  });
-  h += `</ul><div class="row"><button type="button" class="ghost" id="wipe">Clear all history</button></div>`;
+  const planned = plannedOnly(), done = doneOnly();
+  if (!planned.length && !done.length) { el.innerHTML = ''; return; }
+  const label = s => {
+    const n = (s.blocks||[]).flatMap(b => (b.items||[]).map(x => x.name));
+    return esc(n.slice(0,3).join(', ') || 'session') + (n.length > 3 ? ' …' : '');
+  };
+  let h = '<hr>';
+
+  if (planned.length) {
+    h += `<h2>Saved and waiting</h2>
+      <p class="hint">Built, not trained yet. Open one to tick through it and log what you lifted.</p>
+      <ul class="sessions">`;
+    planned.forEach(s => {
+      h += `<li><time datetime="${esc(s.date)}">${esc(fmtDate(s.date))}</time>
+              <a href="#" class="popen" data-id="${esc(s.id)}">${label(s)}</a>
+              <button type="button" class="swap sdel" data-id="${esc(s.id)}">delete</button></li>`;
+    });
+    h += '</ul>';
+  }
+
+  if (done.length) {
+    h += `<h2>History</h2>
+      <p class="hint">${done.length} completed session${done.length===1?'':'s'}. The newest ones are
+      what the builder steers away from.</p><ul class="sessions">`;
+    done.forEach((s, i) => {
+      h += `<li><time datetime="${esc(s.date)}">${esc(fmtDate(s.date))}</time>
+              <a href="#" class="hopen" data-i="${i}">${label(s)}</a>
+              <button type="button" class="swap sdel" data-id="${esc(s.id)}">delete</button></li>
+            <li class="hdetail" id="hd${i}" hidden><div class="hbody"></div></li>`;
+    });
+    h += `</ul><div class="row"><button type="button" class="ghost" id="wipe">Clear all history</button></div>`;
+  }
   el.innerHTML = h;
 }
 
@@ -650,15 +697,36 @@ $('#out').addEventListener('click', e => {
     if (S.error) { $('#copystatus').textContent = S.error; return; }
     render(S); return;
   }
-  if (e.target.id === 'done') {
-    const entry = {date:new Date().toISOString(), total:CURRENT.total, blocks:CURRENT.blocks};
-    HISTORY.unshift(entry);
-    HISTORY = HISTORY.slice(0, 60);
-    write(K.history, HISTORY);
+  if (e.target.id === 'save') {
+    const {savedId, ...rest} = CURRENT;
+    SESSIONS.unshift({...rest, id:newId(), status:'planned', date:new Date().toISOString()});
+    SESSIONS = SESSIONS.slice(0, 80); saveSessions();
     drop(K.current); CURRENT = null;
     $('#out').hidden = true; $('#out').innerHTML = '';
-    renderHistory(); setForm(true);
-    $('#status').textContent = 'Saved. The next draw will steer away from it.';
+    renderSessions(); setForm(true);
+    $('#status').textContent = 'Saved. It is waiting for you under Sessions below.';
+    $('#status').className = 'status';
+    window.scrollTo({top:0, behavior:'smooth'});
+    return;
+  }
+  if (e.target.id === 'back') {
+    drop(K.current); CURRENT = null;
+    $('#out').hidden = true; $('#out').innerHTML = '';
+    renderSessions();
+    $('#hist').scrollIntoView({behavior:'smooth', block:'start'});
+    return;
+  }
+  if (e.target.id === 'done') {
+    const i = SESSIONS.findIndex(x => x.id === CURRENT.savedId);
+    if (i >= 0) {
+      const {savedId, ...rest} = CURRENT;
+      SESSIONS[i] = {...SESSIONS[i], ...rest, status:'done', date:new Date().toISOString()};
+    }
+    saveSessions();
+    drop(K.current); CURRENT = null;
+    $('#out').hidden = true; $('#out').innerHTML = '';
+    renderSessions(); setForm(true);
+    $('#status').textContent = 'Marked done. The next draw will steer away from it.';
     $('#status').className = 'status';
     window.scrollTo({top:0, behavior:'smooth'});
     return;
@@ -681,7 +749,7 @@ $('#hist').addEventListener('click', e => {
     e.preventDefault();
     const i = +open.dataset.i, row = $('#hd'+i);
     if (!row.hidden) { row.hidden = true; return; }
-    const s = HISTORY[i];
+    const s = doneOnly()[i];
     let h = '';
     (s.blocks||[]).forEach(b => {
       h += `<p class="sub-note"><strong>${esc(b.title)}</strong> — ${b.mins} min</p><ul class="plain">`;
@@ -691,14 +759,25 @@ $('#hist').addEventListener('click', e => {
     row.querySelector('.hbody').innerHTML = h || '<p class="sub-note">No movements recorded.</p>';
     row.hidden = false; return;
   }
-  const del = e.target.closest('.hdel');
+  const popen = e.target.closest('.popen');
+  if (popen) {
+    e.preventDefault();
+    const s = SESSIONS.find(x => x.id === popen.dataset.id);
+    if (!s) return;
+    CURRENT = {...s, savedId: s.id};
+    render(CURRENT); setForm(false);
+    $('#out').scrollIntoView({behavior:'smooth', block:'start'});
+    return;
+  }
+  const del = e.target.closest('.sdel');
   if (del) {
-    if (!confirm('Delete this session from your history?')) return;
-    HISTORY.splice(+del.dataset.i, 1); write(K.history, HISTORY); renderHistory(); return;
+    if (!confirm('Delete this session?')) return;
+    SESSIONS = SESSIONS.filter(x => x.id !== del.dataset.id);
+    saveSessions(); renderSessions(); return;
   }
   if (e.target.id === 'wipe') {
-    if (!confirm('Delete all saved sessions? This cannot be undone.')) return;
-    HISTORY = []; write(K.history, HISTORY); renderHistory();
+    if (!confirm('Delete every completed session? This cannot be undone.')) return;
+    SESSIONS = SESSIONS.filter(x => x.status !== 'done'); saveSessions(); renderSessions();
   }
 });
 
@@ -729,7 +808,7 @@ $('#cfg').addEventListener('submit', e => {
 loadPrefs();
 showCardioInfo();
 showFreshHint();
-renderHistory();
+renderSessions();
 setBar();
 if (CURRENT && CURRENT.blocks) { render(CURRENT); setForm(false); }
 else setForm(true);
