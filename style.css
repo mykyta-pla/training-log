@@ -319,3 +319,131 @@ footer a { color: var(--muted); }
   padding: .38rem .5rem; cursor: pointer;
 }
 .swap:hover { color: var(--accent); border-color: var(--accent); }
+
+/* ---------- builder v2: recency, logging, history ---------- */
+
+.ago {
+  font: 500 11px/1.5 var(--mono);
+  color: var(--moderate);
+  letter-spacing: .02em;
+}
+.prev {
+  font: 500 11.5px/1.5 var(--mono);
+  color: var(--accent);
+}
+
+.exlist li.logrow {
+  padding: 0 0 .6rem;
+  border-bottom: 1px solid var(--line);
+}
+.loginput {
+  width: 100%;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: var(--text);
+  font: 400 13px/1.5 var(--mono);
+  padding: .45rem .6rem;
+}
+.loginput:focus { outline: none; border-color: var(--accent); }
+.loginput::placeholder { color: #5d6268; }
+
+.sessions .swap.hdel { margin-left: auto; }
+.sessions li.hdetail { display: block; padding: 0 0 .9rem; border-bottom: 1px solid var(--line); }
+.hbody .sub-note { margin: .7rem 0 .25rem; }
+ul.plain { list-style: none; padding: 0; margin: 0 0 .3rem; }
+ul.plain li {
+  font-size: .9rem; color: var(--muted);
+  padding: .12rem 0; margin: 0; border: 0; display: block;
+}
+
+/* ---------- builder: gym mode ---------- */
+
+.setbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: .78rem 1.1rem;
+  margin: 1.6rem 0 1.5rem;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.setbar:hover { border-color: #3a4046; }
+.setbar .sb-t {
+  font: 500 12.5px/1.4 var(--mono);
+  color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.setbar .sb-a {
+  flex: 0 0 auto;
+  font: 600 11px/1 var(--mono);
+  letter-spacing: .05em; text-transform: uppercase;
+  color: var(--accent);
+}
+
+form#cfg.off { display: none; }
+
+/* session head */
+.sesshead {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 1rem;
+  margin: 2.2rem 0 .3rem;
+}
+.sesshead h2 { margin: 0; }
+.sesshead .prog {
+  flex: 0 0 auto;
+  font: 500 12px/1 var(--mono);
+  color: var(--accent);
+}
+
+/* checklist rows */
+.exlist li.exrow {
+  display: flex; align-items: center; gap: .3rem;
+  padding: .72rem 0; margin: 0;
+  border-bottom: 1px solid var(--line);
+  min-height: 60px;
+}
+.exlist li.exrow:first-child { border-top: 1px solid var(--line); }
+
+.tick {
+  /* 44px hit area, 27px circle — the thumb needs the first, the eye wants the second */
+  flex: 0 0 auto;
+  width: 44px; height: 44px;
+  border: 0; background: transparent; padding: 0;
+  cursor: pointer; position: relative;
+  -webkit-tap-highlight-color: transparent;
+}
+.tick::before {
+  content: ""; position: absolute; left: 50%; top: 50%;
+  width: 27px; height: 27px; margin: -13.5px 0 0 -13.5px;
+  border-radius: 50%; border: 1.5px solid #3a4046;
+}
+.tick:hover::before { border-color: var(--muted); }
+.tick.on::before { background: var(--strong); border-color: var(--strong); }
+.tick.on::after {
+  content: ""; position: absolute; left: 17.5px; top: 13.5px;
+  width: 6px; height: 12px;
+  border: solid #0e0f11; border-width: 0 2px 2px 0;
+  transform: rotate(42deg);
+}
+
+.exrow.done .exn { color: var(--muted); text-decoration: line-through; }
+.exrow.done .exd, .exrow.done .ago { opacity: .55; }
+
+.exlist li.logrow { border-bottom: 1px solid var(--line); }
+
+/* footer actions */
+.sessfoot { margin-top: 1.9rem; }
+.sessfoot .row { margin-top: 0; }
+.sessfoot .minor {
+  margin: .9rem 0 0;
+  font: 400 13px/1.6 var(--mono);
+  color: var(--muted);
+}
+button.link {
+  background: none; border: 0; padding: 0; cursor: pointer;
+  font: 400 13px/1.6 var(--mono);
+  color: var(--muted);
+  text-decoration: underline; text-underline-offset: 2px;
+}
+button.link:hover { color: var(--text); }
