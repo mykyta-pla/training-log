@@ -451,9 +451,57 @@ button.link:hover { color: var(--text); }
 
 /* ---------- movement name as a YouTube search link ---------- */
 
-a.exn { color: var(--text); text-decoration: none; }
-a.exn:hover { color: var(--accent); }
-.ytic { margin-left: .32rem; vertical-align: -1px; opacity: .4; }
-a.exn:hover .ytic { opacity: 1; }
-.exrow.done a.exn { color: var(--muted); text-decoration: line-through; }
-.exrow.done .ytic { opacity: .25; }
+
+/* ---------- readiness panel ---------- */
+
+#ready.off { display: none; }
+#ready { margin: 0 0 1.6rem; }
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .7rem;
+  margin: 0 0 .9rem;
+}
+.fields label, label.wide {
+  display: block;
+  font: 600 10.5px/1.4 var(--mono);
+  letter-spacing: .05em; text-transform: uppercase;
+  color: var(--muted);
+}
+label.wide { display: block; margin-bottom: 1rem; }
+.fields input, label.wide textarea {
+  display: block; width: 100%; margin-top: .35rem;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  font: 400 15px/1.4 var(--mono);
+  padding: .6rem .7rem;
+  text-transform: none; letter-spacing: 0;
+}
+label.wide textarea { font-size: 14px; line-height: 1.5; resize: vertical; }
+.fields input:focus, label.wide textarea:focus { outline: none; border-color: var(--accent); }
+
+.sb-t.band-green  { color: var(--strong); }
+.sb-t.band-amber  { color: var(--moderate); }
+.sb-t.band-red    { color: var(--weak); }
+
+.note.readiness { border-left-color: var(--moderate); }
+
+/* ---------- video button on a movement row ---------- */
+
+.vidbtn {
+  flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: center;
+  width: 38px; height: 38px;
+  border: 1px solid var(--line); border-radius: 7px;
+  background: var(--surface-2);
+  color: var(--muted); text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.vidbtn:hover { color: var(--accent); border-color: var(--accent); }
+.exrow.done .vidbtn { opacity: .45; }
+
+.exlist li.exrow { gap: .45rem; }
+.exrow .swap { padding: .38rem .42rem; }

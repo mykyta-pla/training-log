@@ -31,6 +31,36 @@
   <p class="n1">N=1, not medical advice. This builds sessions from one person&rsquo;s rotation
   menu. It knows nothing about you &mdash; set the constraints yourself, and stop if something hurts.</p>
 
+  <!-- ========================== READINESS ========================== -->
+  <div class="setbar" id="readbar" role="button" tabindex="0" aria-expanded="false"
+       aria-controls="ready">
+    <span class="sb-t" id="rdtext">Readiness &mdash; not set</span>
+    <span class="sb-a" id="rdaction">add</span>
+  </div>
+
+  <div id="ready" class="off">
+    <p class="hint">From Whoop, or wherever you track it. Leave anything blank that you
+    don&rsquo;t have &mdash; recovery alone is enough to change the session. Values stay in this
+    browser and are remembered, so most mornings you&rsquo;re editing one or two.</p>
+    <div class="fields">
+      <label>Recovery %<input id="r_rec" type="number" min="0" max="100" inputmode="numeric"></label>
+      <label>Sleep, hours<input id="r_slh" type="number" min="0" max="14" step="0.1" inputmode="decimal"></label>
+      <label>Sleep performance %<input id="r_slp" type="number" min="0" max="100" inputmode="numeric"></label>
+      <label>HRV, ms<input id="r_hrv" type="number" min="0" max="300" inputmode="numeric"></label>
+      <label>Resting HR<input id="r_rhr" type="number" min="0" max="120" inputmode="numeric"></label>
+      <label>Strain yesterday<input id="r_str" type="number" min="0" max="21" step="0.1" inputmode="decimal"></label>
+    </div>
+    <label class="wide">Anything else &mdash; how you feel, what&rsquo;s sore
+      <textarea id="r_note" rows="2" placeholder="left trap tight, slept badly, legs feel strong…"></textarea>
+    </label>
+    <div class="row">
+      <button type="button" id="rdsave">Save readiness</button>
+      <button type="button" class="ghost" id="rdbrief">Copy brief for Claude</button>
+      <button type="button" class="ghost" id="rdclear">Clear</button>
+    </div>
+    <p class="status" id="rdstatus"></p>
+  </div>
+
   <!-- ============================ FORM ============================ -->
   <div class="setbar" id="setbar" role="button" tabindex="0" aria-expanded="true"
        aria-controls="cfg">
@@ -286,7 +316,7 @@ const LOGGABLE = new Set(['hinge','squat','push','pull','acc']);
 
 /* ============================================================== storage == */
 
-const K = {prefs:'tl.prefs', current:'tl.current', history:'tl.history'};
+const K = {prefs:'tl.prefs', current:'tl.current', history:'tl.history', ready:'tl.readiness'};
 const read  = (k, fb) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fb; } catch (_) { return fb; } };
 const write = (k, v)  => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} };
 const drop  = k       => { try { localStorage.removeItem(k); } catch (_) {} };
@@ -420,13 +450,157 @@ function pickFresh(pool, rec) {
   return pick(pool.filter(x => rec.get(x.n) === maxAgo));
 }
 
+/* ============================================================== readiness == */
+
+let RD = read(K.ready, null);
+const RF = ['rec','slh','slp','hrv','rhr','str'];
+const num = v => (v === '' || v == null || isNaN(+v)) ? null : +v;
+
+function loadReadiness() {
+  if (!RD) return;
+  RF.forEach(k => { if (RD[k] != null) $('#r_' + k).value = RD[k]; });
+  if (RD.note) $('#r_note').value = RD.note;
+}
+function readReadiness() {
+  const r = {at: new Date().toISOString(), note: $('#r_note').value.trim()};
+  RF.forEach(k => r[k] = num($('#r_' + k).value));
+  return r;
+}
+
+// Whoop's own bands: red under 34, amber to 66, green above. The adjustments below are
+// conventions, not trial evidence — they are deliberately conservative and always explained.
+function verdict(r) {
+  const out = {band:null, cap:null, dropFin:false, forceMob:false, ease:1, why:[]};
+  if (!r || r.rec == null) return out;
+  const rec = r.rec;
+  let band = rec >= 67 ? 'green' : rec >= 34 ? 'amber' : 'red';
+
+  if (r.slh != null && r.slh < 6) {
+    if (band === 'green') { band = 'amber'; out.why.push(`${r.slh} h sleep — treating ${rec}% recovery as amber`); }
+    else if (band === 'amber') { band = 'red'; out.why.push(`${r.slh} h sleep on ${rec}% recovery — treating as red`); }
+  }
+  if (r.str != null && r.str >= 15 && rec < 50 && band === 'amber') {
+    band = 'red'; out.why.push(`strain ${r.str} yesterday on ${rec}% recovery — dropping a band`);
+  }
+
+  out.band = band;
+  if (band === 'green') out.why.unshift(`recovery ${rec}% — full session`);
+  if (band === 'amber') {
+    out.cap = 60; out.dropFin = true;
+    out.why.unshift(`recovery ${rec}% — finisher dropped, capped at 60 min`);
+  }
+  if (band === 'red') {
+    out.cap = 45; out.dropFin = true; out.forceMob = true; out.ease = 0.7;
+    out.why.unshift(`recovery ${rec}% — mobility kept, strength cut back, capped at 45 min`);
+    out.why.push('on a day like this a walk or a yoga class is a defensible alternative');
+  }
+  return out;
+}
+
+function readBar() {
+  if (!RD || RD.rec == null) { $('#rdtext').textContent = 'Readiness — not set';
+    $('#rdaction').textContent = $('#ready').classList.contains('off') ? 'add' : 'close'; return; }
+  const v = verdict(RD);
+  const age = Math.floor((Date.now() - new Date(RD.at)) / 86400000);
+  const when = age <= 0 ? 'today' : age === 1 ? 'yesterday' : age + ' days ago';
+  const bits = [`recovery ${RD.rec}%`];
+  if (RD.slh != null) bits.push(`${RD.slh} h sleep`);
+  bits.push(when);
+  $('#rdtext').textContent = bits.join(' · ');
+  $('#rdtext').className = 'sb-t band-' + (v.band || 'none');
+  $('#rdaction').textContent = $('#ready').classList.contains('off') ? 'edit' : 'close';
+}
+function setReady(open) {
+  $('#ready').classList.toggle('off', !open);
+  $('#readbar').setAttribute('aria-expanded', open ? 'true' : 'false');
+  readBar();
+}
+$('#readbar').addEventListener('click', () => setReady($('#ready').classList.contains('off')));
+$('#readbar').addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('#readbar').click(); }
+});
+$('#rdsave').addEventListener('click', () => {
+  RD = readReadiness(); write(K.ready, RD); setReady(false);
+  const v = verdict(RD);
+  $('#rdstatus').textContent = v.why.length ? v.why[0] : 'Saved.';
+  $('#rdstatus').className = 'status';
+});
+$('#rdclear').addEventListener('click', () => {
+  RD = null; drop(K.ready);
+  RF.forEach(k => $('#r_' + k).value = ''); $('#r_note').value = '';
+  $('#rdstatus').textContent = 'Cleared — sessions build without any adjustment.';
+  readBar();
+});
+$('#rdbrief').addEventListener('click', () => {
+  navigator.clipboard.writeText(briefForClaude())
+    .then(() => $('#rdstatus').textContent = 'Brief copied — paste it into a Claude conversation.')
+    .catch(() => $('#rdstatus').textContent = 'Copy failed — your browser blocked it.');
+});
+
+function briefForClaude() {
+  const equip = +one('equip'), avoid = many('avoid');
+  const kit = {0:'bodyweight only', 1:'bodyweight and bands', 2:'dumbbells, bands, bodyweight',
+               3:'a full gym'}[equip];
+  const L = [];
+  L.push('I want you to suggest my training session for today. Here is everything relevant.');
+  L.push('');
+  L.push('CONSTRAINTS');
+  L.push(`- Time available: ${one('dur')} minutes`);
+  L.push(`- Equipment: ${kit}`);
+  L.push(avoid.length
+    ? `- Must avoid: ${$$('#avoid .chip.on').map(c => c.textContent.trim().toLowerCase()).join(', ')}`
+    : '- No movement restrictions set');
+  L.push('');
+  if (RD && RD.rec != null) {
+    L.push('READINESS TODAY');
+    const lab = {rec:'Recovery %', slh:'Sleep (hours)', slp:'Sleep performance %',
+                 hrv:'HRV (ms)', rhr:'Resting HR', str:'Strain yesterday'};
+    RF.forEach(k => { if (RD[k] != null) L.push(`- ${lab[k]}: ${RD[k]}`); });
+    if (RD.note) L.push(`- In my words: ${RD.note}`);
+    L.push('');
+  }
+  const done = doneOnly().slice(0, 4);
+  if (done.length) {
+    L.push('LAST ' + done.length + ' COMPLETED SESSIONS (most recent first)');
+    done.forEach(s => {
+      L.push(`- ${fmtDate(s.date)}:`);
+      (s.blocks || []).forEach(b => (b.items || []).forEach(it =>
+        L.push(`    ${it.name}${it.detail ? ' — ' + it.detail : ''}${it.load ? '  [' + it.load + ']' : ''}`)));
+    });
+    L.push('');
+    L.push('Please do not repeat movements from the most recent one or two sessions.');
+    L.push('');
+  }
+  const pool = LIB.filter(x => x.e <= equip && !x.a.some(t => avoid.includes(t)));
+  const groups = {hinge:'Hinge', squat:'Squat', push:'Push', pull:'Pull', acc:'Accessory',
+                  core:'Core', fin:'Finisher', m_shoulder:'Mobility — shoulders',
+                  m_hip:'Mobility — hips', m_spine:'Mobility — spine', m_neck:'Mobility — neck'};
+  L.push('MOVEMENTS AVAILABLE TO ME');
+  Object.keys(groups).forEach(g => {
+    const ns = pool.filter(x => x.p === g).map(x => x.n);
+    if (ns.length) L.push(`- ${groups[g]}: ${ns.join(', ')}`);
+  });
+  L.push('');
+  L.push('Give me one session: which blocks, which movements, sets and reps, and one line');
+  L.push('on why you chose it given the readiness numbers. If the numbers say I should train');
+  L.push('lighter or not at all, say so plainly rather than finding me something to do.');
+  return L.join('\n');
+}
+
 /* =================================================================== build == */
 
 function build() {
-  const total = +one('dur'), equip = +one('equip');
+  let total = +one('dur');
+  const equip = +one('equip');
   const avoid = many('avoid'), depth = +one('fresh');
   const want = {mob:$('#b_mob').checked, car:$('#b_car').checked, str:$('#b_str').checked,
                 core:$('#b_core').checked, fin:$('#b_fin').checked};
+
+  // readiness overrides what you asked for, and says so
+  const V = verdict(RD);
+  if (V.cap && total > V.cap) total = V.cap;
+  if (V.dropFin) want.fin = false;
+  if (V.forceMob) want.mob = true;
   if (!Object.values(want).some(Boolean)) return {error:'Pick at least one block.'};
 
   const carVar = CARDIO[one('carvar')];
@@ -448,10 +622,12 @@ function build() {
   let spare = total - floorTotal;
   const time = {...mins};
   if (want.str) time.str += spare; else if (want.car) time.car += spare;
+  if (want.str && V.ease < 1) time.str = Math.max(12, Math.round(time.str * V.ease));
 
   const rec = recencyMap(depth);
   const used = new Set();
-  const S = {total, blocks:[], avoid, note:[], depth, built:new Date().toISOString()};
+  const S = {total, blocks:[], avoid, note:[], depth, readiness:V.why,
+             built:new Date().toISOString()};
   let repeated = 0;
 
   const take = (pattern, extra) => {
@@ -577,6 +753,10 @@ function render(S) {
   let h = `<div class="sesshead"><h2>Your session</h2>
       <span class="prog">${ticked} of ${all.length} done</span></div>
     <p class="sessmeta">${esc(bits.join(' · '))}</p>`;
+  if ((S.readiness || []).length) {
+    h += `<div class="note readiness"><p><strong>Adjusted for readiness.</strong><br>
+          ${S.readiness.map(esc).join('<br>')}</p></div>`;
+  }
 
   S.blocks.forEach((b, bi) => {
     h += `<section class="sblk"><h3>${esc(b.title)} <span class="mins">${b.mins} min</span></h3>
@@ -590,13 +770,16 @@ function render(S) {
             <button type="button" class="tick${it.done ? ' on' : ''}" data-b="${bi}" data-i="${ii}"
               aria-pressed="${it.done ? 'true' : 'false'}" aria-label="Mark ${esc(it.name)} done"></button>
             <span class="ex">
-              <a class="exn" target="_blank" rel="noopener"
-                 href="https://www.youtube.com/results?search_query=${encodeURIComponent(it.name + ' exercise form')}"
-                 title="Search YouTube for this movement">${esc(it.name)}<svg class="ytic" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 7l8 5-8 5V7z" stroke-linejoin="round"/></svg></a>
+              <span class="exn">${esc(it.name)}</span>
               <span class="exd">${esc(it.detail)}</span>
               ${it.ago !== null && it.ago !== undefined ? `<span class="ago">${it.ago === 0 ? 'last session' : it.ago === 1 ? '2 sessions ago' : (it.ago+1)+' sessions ago'}</span>` : ''}
               ${prev ? `<span class="prev">last: ${esc(prev.load)}</span>` : ''}
             </span>
+            <a class="vidbtn" target="_blank" rel="noopener"
+               href="https://www.youtube.com/results?search_query=${encodeURIComponent(it.name + ' exercise form')}"
+               title="Watch how to do this" aria-label="Video for ${esc(it.name)}">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 7l8 5-8 5V7z" stroke-linejoin="round"/></svg>
+            </a>
             <button type="button" class="swap" data-b="${bi}" data-i="${ii}">swap</button>
           </li>`;
         if (LOGGABLE.has(pat) && it.done) {
@@ -809,6 +992,17 @@ loadPrefs();
 showCardioInfo();
 showFreshHint();
 renderSessions();
+// arriving from the Sessions page with ?open=<id>
+try {
+  const want = new URLSearchParams(location.search).get('open');
+  if (want) {
+    const s = SESSIONS.find(x => x.id === want);
+    if (s) { CURRENT = {...s, savedId: s.id}; write(K.current, CURRENT); }
+    history.replaceState(null, '', location.pathname);
+  }
+} catch (_) {}
+loadReadiness();
+readBar();
 setBar();
 if (CURRENT && CURRENT.blocks) { render(CURRENT); setForm(false); }
 else setForm(true);
