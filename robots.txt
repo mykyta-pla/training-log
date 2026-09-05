@@ -1,0 +1,3 @@
+User-agent: *
+Disallow: /training-log/private/
+Disallow: /private/
