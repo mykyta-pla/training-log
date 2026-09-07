@@ -11,9 +11,10 @@ N=1, not medical advice.
 
 ```
 index.html            home
-builder/              session builder — the only page with real JavaScript
-sessions/             session archive, newest first
-  template.html       copy this to add a session
+movements.js          the movement library, shared by builder and videos
+builder/              session builder — readiness, set logging, history
+sessions/             your saved and completed sessions
+videos/               one video link per movement
 training/             structure, mobility menu, variability-first programming
 nutrition/            restaurant and business-lunch playbook
 supplements/          thinking + honesty audit, with evidence grades
@@ -24,9 +25,8 @@ style.css             the whole design system
 
 ## Adding a session
 
-1. Copy `sessions/template.html` to `sessions/YYYY-MM-DD-slug.html` and fill it in.
-2. Add one `<li>` at the top of the list in `sessions/index.html`.
-3. Update the "Latest session" card on `index.html`.
+Build one in `builder/` and press Save. Sessions live in the browser's local
+storage, not in this repository — there are no per-session HTML files.
 
 ## private/
 

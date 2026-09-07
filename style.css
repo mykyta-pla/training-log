@@ -505,3 +505,119 @@ label.wide textarea { font-size: 14px; line-height: 1.5; resize: vertical; }
 
 .exlist li.exrow { gap: .45rem; }
 .exrow .swap { padding: .38rem .42rem; }
+
+/* ---------- tracker sub-panel ---------- */
+
+details.trk {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 1rem;
+  margin: 0 0 1.3rem;
+  background: var(--surface);
+}
+details.trk > summary {
+  cursor: pointer;
+  padding: .95rem 0;
+  font: 500 14px/1.4 var(--sans);
+  color: var(--accent);
+  list-style: none;
+}
+details.trk > summary::-webkit-details-marker { display: none; }
+details.trk > summary::before { content: "+ "; font-family: var(--mono); }
+details.trk[open] > summary::before { content: "− "; }
+details.trk[open] > summary { border-bottom: 1px solid var(--line); margin-bottom: .9rem; }
+details.trk > *:last-child { margin-bottom: .95rem; }
+
+#r_dev {
+  display: block; width: 100%; margin-top: .35rem;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  font: 400 15px/1.4 var(--sans);
+  padding: .6rem .7rem;
+  text-transform: none; letter-spacing: 0;
+}
+#r_dev:focus { outline: none; border-color: var(--accent); }
+
+#r_paste { min-height: 8rem; font-size: 13px; }
+#r_note  { min-height: 6.5rem; }
+
+/* ---------- set tables (per-set weight and reps) ---------- */
+
+.exlist li.setwrap {
+  display: block; padding: .1rem 0 .8rem 2.6rem;
+  border-bottom: 1px solid var(--line);
+}
+table.sets { width: 100%; min-width: 0; margin: 0; font-size: .9rem; }
+table.sets th {
+  font: 600 9.5px/1 var(--mono); letter-spacing: .06em;
+  color: var(--muted); padding: 0 .4rem .35rem 0; border: 0;
+}
+table.sets td { padding: .2rem .4rem .2rem 0; border: 0; vertical-align: middle; }
+table.sets .c-n { width: 1.6rem; font: 500 12px/1 var(--mono); color: var(--muted); }
+table.sets .c-p { width: 4.6rem; font: 400 11.5px/1.3 var(--mono); color: #6f747a; }
+table.sets .c-i { width: auto; }
+table.sets .c-t { width: 2.6rem; text-align: right; }
+
+.sfield {
+  width: 100%; min-width: 3rem;
+  background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: 5px; color: var(--text);
+  font: 500 15px/1 var(--mono); padding: .48rem .4rem;
+  text-align: center;
+}
+.sfield:focus { outline: none; border-color: var(--accent); }
+.sfield::placeholder { color: #4d5257; }
+
+.stick {
+  width: 32px; height: 32px; padding: 0; cursor: pointer;
+  border: 1.5px solid #3a4046; border-radius: 6px;
+  background: transparent; position: relative;
+  -webkit-tap-highlight-color: transparent;
+}
+.stick:hover { border-color: var(--muted); }
+.stick.on { background: var(--strong); border-color: var(--strong); }
+.stick.on::after {
+  content: ""; position: absolute; left: 11px; top: 6px;
+  width: 5px; height: 11px;
+  border: solid #0e0f11; border-width: 0 2px 2px 0;
+  transform: rotate(42deg);
+}
+tr.sdone .sfield { color: var(--muted); }
+
+.setbtns { margin: .5rem 0 0; font: 400 12.5px/1.6 var(--mono); color: var(--muted); }
+
+/* ---------- video library ---------- */
+
+.vidhead { margin: 0 0 1.6rem; }
+#filter {
+  width: 100%; background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: 8px;
+  color: var(--text); font: 400 16px/1.4 var(--sans);
+  padding: .7rem .85rem;
+}
+#filter:focus { outline: none; border-color: var(--accent); }
+#count { margin: .6rem 0 0; }
+
+h2 .gcount { font: 500 11px/1 var(--mono); color: var(--muted); margin-left: .4rem; }
+
+ul.vidlist { list-style: none; padding: 0; margin: 0 0 1.6rem; }
+ul.vidlist li.vidrow {
+  display: flex; align-items: center; gap: .55rem;
+  padding: .6rem 0; margin: 0;
+  border-bottom: 1px solid var(--line);
+}
+ul.vidlist li.vidrow:first-child { border-top: 1px solid var(--line); }
+.vidrow .vn { flex: 1 1 40%; min-width: 0; font-size: .95rem; font-weight: 500; }
+.vidrow.has .vn { color: var(--accent); }
+.vidrow .vin { flex: 1 1 60%; min-width: 0; }
+.vurl {
+  width: 100%; background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: 6px;
+  color: var(--text); font: 400 12.5px/1.3 var(--mono);
+  padding: .5rem .55rem;
+}
+.vurl:focus { outline: none; border-color: var(--accent); }
+.vurl::placeholder { color: #4d5257; }
+.vidbtn.fallback { opacity: .45; }

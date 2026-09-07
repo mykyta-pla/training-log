@@ -16,6 +16,7 @@
     <nav class="top">
       <a href="../builder/">Builder</a>
       <a href="../sessions/" aria-current="page">Sessions</a>
+      <a href="../videos/">Videos</a>
       <a href="../training/">Training</a>
       <a href="../nutrition/">Nutrition</a>
       <a href="../supplements/">Supplements</a>
@@ -69,8 +70,12 @@ const detail = s => {
   (s.blocks || []).forEach(b => {
     h += `<p class="sub-note"><strong>${esc(b.title)}</strong> — ${b.mins} min</p><ul class="plain">`;
     (b.items || []).forEach(it => {
+      const sm = Array.isArray(it.sets)
+        ? it.sets.map(x => (x.kg || x.reps) ? `${x.kg || '—'}${x.reps ? ' × ' + x.reps : ''}` : '')
+                 .filter(Boolean).join(', ')
+        : (it.load || '');
       h += `<li>${esc(it.name)}${it.detail ? ' — ' + esc(it.detail) : ''}` +
-           `${it.load ? ` <span class="prev">${esc(it.load)}</span>` : ''}</li>`;
+           `${sm ? ` <span class="prev">${esc(sm)}</span>` : ''}</li>`;
     });
     h += '</ul>';
   });
