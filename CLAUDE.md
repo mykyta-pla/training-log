@@ -31,9 +31,10 @@ no hype, no protocol-selling, no motivational language.
 
 ## Structure
 index.html          home
-movements.js        movement library — shared by builder and videos
-builder/            session builder: readiness, set logging, history
-sessions/           saved and completed sessions (reads localStorage)
+movements.js        movement library and starting loads — shared by builder,
+                    sessions and videos
+builder/            session builder: readiness, drawing the plan, history
+sessions/           saved plans, trained and logged here — weights and reps
 videos/             one video link per movement
 training/           structure, mobility menu, variability-first
 nutrition/          restaurant and business-lunch playbook
