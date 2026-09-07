@@ -77,6 +77,14 @@ const byId = id => SESSIONS.find(s => s.id === id);
 // Only these carry a load worth logging. Mobility, core and finishers are ticked, not weighed.
 const LOGGABLE = new Set(['hinge','squat','push','pull','acc']);
 
+// what the builder was last set to — a swap shouldn't hand you a barbell in a hotel room
+const equipLevel = () => {
+  try {
+    const p = JSON.parse(localStorage.getItem('tl.prefs') || '{}') || {};
+    return p.equip == null || isNaN(+p.equip) ? 3 : +p.equip;
+  } catch (_) { return 3; }
+};
+
 let VID = {};
 try { VID = JSON.parse(localStorage.getItem('tl.videos') || '{}') || {}; } catch (_) { VID = {}; }
 const videoFor = n => VID[n] ||
@@ -172,6 +180,19 @@ function logBody(s) {
 
   let h = `<div class="sesshead"><h3>${esc(fmtDate(s.date))} — ${s.total || '?'} min</h3>
       <span class="prog">${ticked} of ${all.length} done</span></div>`;
+
+  // what the builder worked out when it drew this: how the time landed, what it held back
+  const slack = s.slack ?? 0;
+  const bits = [];
+  if (s.total) bits.push(`${s.planned ?? s.total} min of work in your ${s.total}`);
+  if (slack >= 3) bits.push(`about ${slack} min spare`);
+  else if (slack <= -3) bits.push(`running ${-slack} min long`);
+  if (s.depth) bits.push(s.repeated
+    ? `${s.repeated} repeat${s.repeated === 1 ? '' : 's'} from the last ${s.depth} — the pool ran out`
+    : `nothing repeated from your last ${s.depth}`);
+  if (s.excluded) bits.push(s.excluded);
+  if (bits.length) h += `<p class="sessmeta">${esc(bits.join(' · '))}</p>`;
+
   if ((s.readiness || []).length) {
     h += `<div class="note readiness"><p><strong>Built for that day's readiness.</strong><br>
           ${s.readiness.map(esc).join('<br>')}</p></div>`;
@@ -198,6 +219,7 @@ function logBody(s) {
                aria-label="Video for ${esc(it.name)}">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 7l8 5-8 5V7z" stroke-linejoin="round"/></svg>
             </a>
+            <button type="button" class="swap" data-id="${id}" data-b="${bi}" data-i="${ii}">swap</button>
           </li>`;
         if (!Array.isArray(it.sets)) return;
         h += `<li class="setwrap"><table class="sets"><thead><tr>
@@ -230,12 +252,15 @@ function logBody(s) {
     h += '</section>';
   });
 
+  if ((s.note || []).length) h += `<div class="note"><p>${s.note.map(esc).join('<br>')}</p></div>`;
+
   h += `<div class="sessfoot">
           <div class="row">
             <button type="button" class="fin" data-id="${id}">Mark as done</button>
           </div>
           <p class="minor">Typed numbers save themselves as you go. Marking it done files it
              below, and the builder starts steering away from these movements.</p>
+          <p class="status pstatus"></p>
         </div>`;
   return h;
 }
@@ -245,9 +270,9 @@ function render() {
   const el = $('#list');
 
   if (!planned.length && !done.length) {
-    el.innerHTML = `<div class="note"><p>Nothing here yet. Build a session in the
-      <a href="../builder/">builder</a> and press <strong>Save training program</strong> — it
-      will appear here, waiting for you.</p></div>`;
+    el.innerHTML = `<div class="note"><p>Nothing here yet. Set the constraints in the
+      <a href="../builder/">builder</a> and press <strong>Build and open the session</strong>
+      — it lands here, open and waiting.</p></div>`;
     return;
   }
 
@@ -307,6 +332,26 @@ $('#list').addEventListener('input', e => {
 });
 
 $('#list').addEventListener('click', e => {
+  // A movement can still be traded for another — the machine is taken, the shoulder says no.
+  // Same draw the builder used, minus whatever is already in this session.
+  const swap = e.target.closest('.swap:not(.sdel)');
+  if (swap) {
+    const s = byId(swap.dataset.id); if (!s) return;
+    const b = s.blocks[+swap.dataset.b], i = +swap.dataset.i, it = b.items[i];
+    const used = new Set();
+    (s.blocks || []).forEach(bl => (bl.items || []).forEach(x => used.add(x.name)));
+    const rec = recencyMap(doneOnly(), s.depth || 0);
+    const x = pickFresh(eligible(it.pattern, equipLevel(), s.avoid || [], used), rec);
+    if (!x) {
+      const p = document.querySelector('#p-' + CSS.escape(s.id) + ' .pstatus');
+      if (p) p.textContent = 'Nothing else available for that slot.';
+      return;
+    }
+    b.items[i] = {name: x.n, pattern: it.pattern, detail: x.d || it.detail,
+                  ago: rec.has(x.n) ? rec.get(x.n) : null};
+    seedSession(s);          // a different movement gets its own numbers
+    save(); redrawLog(s.id); return;
+  }
   const st = e.target.closest('.stick');
   if (st) {
     const s = byId(st.dataset.id); if (!s) return;

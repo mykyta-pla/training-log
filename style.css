@@ -282,6 +282,7 @@ footer a { color: var(--muted); }
 .row button {
   background: var(--accent); color: #0e0f11; border: 0; border-radius: 6px;
   font: 600 14px/1 var(--sans); padding: .78rem 1.15rem; cursor: pointer;
+  min-height: 44px;   /* thumbs, in a gym, on a phone */
 }
 .row button.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
 .row button.ghost:hover { border-color: #3a4046; }
@@ -504,7 +505,7 @@ label.wide textarea { font-size: 14px; line-height: 1.5; resize: vertical; }
 .exrow.done .vidbtn { opacity: .45; }
 
 .exlist li.exrow { gap: .45rem; }
-.exrow .swap { padding: .38rem .42rem; }
+.exrow .swap { padding: .38rem .42rem; min-width: 44px; min-height: 44px; }
 
 /* ---------- tracker sub-panel ---------- */
 
@@ -592,6 +593,8 @@ table.sets .c-t { width: 3rem; text-align: right; }
 tr.sdone .sfield { color: var(--muted); }
 
 .setbtns { margin: .5rem 0 0; font: 400 12.5px/1.6 var(--mono); color: var(--muted); }
+/* the text stays small; the tappable box around it does not */
+.setbtns .link { display: inline-block; padding: .75rem 0; }
 
 /* ---------- video library ---------- */
 

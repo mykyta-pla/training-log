@@ -192,13 +192,12 @@
     </div>
 
     <div class="row">
-      <button type="submit" id="go">Build the session</button>
+      <button type="submit" id="go">Build and open the session</button>
     </div>
+    <p class="hint">It draws the session, files it under Sessions and opens it there. The
+    weights and reps go in as you train it.</p>
     <p class="status" id="status"></p>
   </form>
-
-  <!-- ============================ OUTPUT ============================ -->
-  <div id="out" hidden></div>
 
   <!-- ============================ HISTORY ============================ -->
   <div id="hist"></div>
@@ -236,7 +235,6 @@ const FOCUS = {
 };
 
 const REPS = {hinge:'5–8', squat:'6–10', push:'6–10', pull:'6–10', acc:'10–15'};
-const LOGGABLE = new Set(['hinge','squat','push','pull','acc']);
 
 /* ============================================================== storage == */
 
@@ -256,7 +254,6 @@ const saveSessions = () => write(K.history, SESSIONS);
 
 const $  = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
-const pick = a => a[Math.floor(Math.random() * a.length)];
 const esc = s => String(s == null ? '' : s).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
 const fmtDate = iso => new Date(iso).toLocaleDateString(undefined, {day:'2-digit', month:'short', year:'2-digit'});
 
@@ -343,44 +340,9 @@ function loadPrefs() {
 }
 ['b_core','b_fin'].forEach(id => $('#'+id).addEventListener('change', savePrefs));
 
-/* ============================================== selection with a memory == */
-
-// how many sessions back a movement was last used. 0 = this many sessions ago.
-function recencyMap(depth) {
-  const m = new Map();
-  if (!depth) return m;
-  doneOnly().slice(0, depth).forEach((s, i) => {
-    (s.blocks || []).forEach(b => (b.items || []).forEach(it => {
-      if (!m.has(it.name)) m.set(it.name, i);   // i = sessions ago
-    }));
-  });
-  return m;
-}
-
-function eligible(pattern, equip, avoid, used) {
-  const pats = pattern.split('|');
-  return LIB.filter(x => pats.includes(x.p) && x.e <= equip &&
-    !x.a.some(t => avoid.includes(t)) && !used.has(x.n));
-}
-
-// Prefer movements not seen recently. Never fails while any candidate exists:
-// falls back to the least recently used rather than returning nothing.
-function pickFresh(pool, rec) {
-  if (!pool.length) return null;
-  const unseen = pool.filter(x => !rec.has(x.n));
-  if (unseen.length) return pick(unseen);
-  // everything here was used recently — take the least recent of them
-  const maxAgo = Math.max(...pool.map(x => rec.get(x.n)));
-  return pick(pool.filter(x => rec.get(x.n) === maxAgo));
-}
-
 /* ============================================================== readiness == */
 
 let RD = read(K.ready, null);
-let VID = {};
-try { VID = JSON.parse(localStorage.getItem('tl.videos') || '{}') || {}; } catch (_) { VID = {}; }
-const videoFor = n => VID[n] ||
-  ('https://www.youtube.com/results?search_query=' + encodeURIComponent(n + ' exercise form'));
 const RF = ['rec','slh','slp','hrv','rhr','str'];
 const num = v => (v === '' || v == null || isNaN(+v)) ? null : +v;
 
@@ -644,7 +606,7 @@ function build() {
   if (want.str) time.str += spare; else if (want.car) time.car += spare;
   if (want.str && V.ease < 1) time.str = Math.max(12, Math.round(time.str * V.ease));
 
-  const rec = recencyMap(depth);
+  const rec = recencyMap(doneOnly(), depth);
   const used = new Set();
   const S = {total, blocks:[], avoid, note:[], depth, readiness:V.why,
              built:new Date().toISOString()};
@@ -735,111 +697,12 @@ function build() {
   return S;
 }
 
-/* ================================================================== render == */
+/* ================================================================= history == */
 
-let CURRENT = read(K.current, null);
-
-// the sets you actually logged last time you did this movement
-function lastSets(name) {
-  for (const s of doneOnly()) {
-    for (const b of s.blocks || []) {
-      for (const it of b.items || []) {
-        if (it.name === name && Array.isArray(it.sets) && it.sets.some(x => x.kg || x.reps))
-          return it.sets;
-      }
-    }
-  }
-  return null;
-}
 const setLabel = st => (st && (st.kg || st.reps))
   ? `${st.kg || '—'}${st.reps ? ' × ' + st.reps : ''}` : '';
 const setsSummary = it => Array.isArray(it.sets)
   ? it.sets.map(setLabel).filter(Boolean).join(', ') : (it.load || '');
-
-// last logged load for a movement, and how long ago
-function lastLog(name) {
-  const done = doneOnly();
-  for (let i = 0; i < done.length; i++) {
-    for (const b of done[i].blocks || []) {
-      for (const it of b.items || []) {
-        if (it.name === name && it.load) return {load: it.load, date: done[i].date};
-      }
-    }
-  }
-  return null;
-}
-
-function render(S) {
-  // a session read back from storage may predate fields added later — fill them in
-  S.blocks = S.blocks || [];
-  S.note   = S.note   || [];
-  CURRENT = S; write(K.current, S);
-  const slack = S.slack ?? 0;
-  const bits = [`${S.planned ?? S.total} min of work in your ${S.total}`];
-  if (slack >= 3) bits.push(`about ${slack} min spare`);
-  else if (slack <= -3) bits.push(`running ${-slack} min long`);
-  bits.push(`${S.blocks.length} block${S.blocks.length===1?'':'s'}`);
-  if (S.depth) bits.push(S.repeated
-    ? `${S.repeated} repeat${S.repeated===1?'':'s'} from the last ${S.depth} — the pool ran out`
-    : `nothing repeated from your last ${S.depth}`);
-  if (S.excluded) bits.push(S.excluded);
-
-  const all = S.blocks.flatMap(b => b.items);
-
-  let h = `<div class="sesshead"><h2>Your session</h2>
-      <span class="prog">${all.length} movement${all.length === 1 ? '' : 's'}</span></div>
-    <p class="sessmeta">${esc(bits.join(' · '))}</p>`;
-  if ((S.readiness || []).length) {
-    h += `<div class="note readiness"><p><strong>Adjusted for readiness.</strong><br>
-          ${S.readiness.map(esc).join('<br>')}</p></div>`;
-  }
-
-  S.blocks.forEach((b, bi) => {
-    h += `<section class="sblk"><h3>${esc(b.title)} <span class="mins">${b.mins} min</span></h3>
-          <p class="sub-note">${esc(b.sub)}</p>`;
-    if (b.items.length) {
-      h += '<ul class="exlist">';
-      b.items.forEach((it, ii) => {
-        const pat = it.pattern.split('|')[0];
-        const ps = LOGGABLE.has(pat) ? lastSets(it.name) : null;
-        const prev = ps ? {load: ps.map(setLabel).filter(Boolean).slice(0, 3).join(', ')}
-                        : (LOGGABLE.has(pat) ? lastLog(it.name) : null);
-        h += `<li class="exrow">
-            <span class="ex">
-              <span class="exn">${esc(it.name)}</span>
-              <span class="exd">${esc(it.detail)}</span>
-              ${it.ago !== null && it.ago !== undefined ? `<span class="ago">${it.ago === 0 ? 'last session' : it.ago === 1 ? '2 sessions ago' : (it.ago+1)+' sessions ago'}</span>` : ''}
-              ${prev ? `<span class="prev">last: ${esc(prev.load)}</span>` : ''}
-            </span>
-            <a class="vidbtn" target="_blank" rel="noopener"
-               href="${esc(videoFor(it.name))}"
-               title="${VID[it.name] ? 'Your saved video' : 'No link saved — searches YouTube'}"
-               aria-label="Video for ${esc(it.name)}">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 7l8 5-8 5V7z" stroke-linejoin="round"/></svg>
-            </a>
-            <button type="button" class="swap" data-b="${bi}" data-i="${ii}">swap</button>
-          </li>`;
-      });
-      h += '</ul>';
-    }
-    h += '</section>';
-  });
-
-  if (S.note.length) h += `<div class="note"><p>${S.note.map(esc).join('<br>')}</p></div>`;
-  h += `<div class="sessfoot">
-          <div class="row">
-            <button type="button" id="save">Save training program</button>
-            <button type="button" class="ghost" id="again">Draw again</button>
-          </div>
-          <p class="minor">Saving hands it to <a href="../sessions/">Sessions</a> and clears the
-             board here. Weights and reps go in there, while you train it.</p>
-          <p class="minor"><button type="button" class="link" id="copy">copy as text</button>
-             · <button type="button" class="link" id="clear">discard</button></p>
-          <p class="status" id="copystatus"></p>
-        </div>`;
-
-  const out = $('#out'); out.innerHTML = h; out.hidden = false;
-}
 
 function renderSessions() {
   const el = $('#hist');
@@ -881,58 +744,6 @@ function renderSessions() {
 
 /* =================================================================== events == */
 
-$('#out').addEventListener('click', e => {
-  const swap = e.target.closest('.swap');
-  if (swap) {
-    const b = CURRENT.blocks[+swap.dataset.b], i = +swap.dataset.i;
-    const used = new Set(); CURRENT.blocks.forEach(bl => bl.items.forEach(x => used.add(x.name)));
-    const pool = eligible(b.items[i].pattern, +one('equip'), CURRENT.avoid, used);
-    const rec = recencyMap(CURRENT.depth || 0);
-    const x = pickFresh(pool, rec);
-    if (!x) { $('#copystatus').textContent = 'Nothing else available for that slot.'; return; }
-    b.items[i] = {...b.items[i], name:x.n, detail:x.d || b.items[i].detail,
-                  ago: rec.has(x.n) ? rec.get(x.n) : null};
-    render(CURRENT); return;
-  }
-  if (e.target.id === 'again') {
-    const S = build();
-    if (S.error) { $('#copystatus').textContent = S.error; return; }
-    render(S); return;
-  }
-  // Saving hands the plan over to Sessions and clears the board here — one plan lives in
-  // one place, and the loads are typed in where it is trained.
-  if (e.target.id === 'save') {
-    const plan = {
-      ...CURRENT,
-      blocks: (CURRENT.blocks || []).map(b => ({
-        ...b, items: (b.items || []).map(({sets, done, load, ...it}) => it),
-      })),
-      id: newId(), status: 'planned', date: new Date().toISOString(),
-    };
-    delete plan.savedId;
-    SESSIONS.unshift(plan);
-    SESSIONS = SESSIONS.slice(0, 80); saveSessions();
-    drop(K.current); CURRENT = null;
-    $('#out').hidden = true; $('#out').innerHTML = '';
-    renderSessions(); setForm(true);
-    $('#status').innerHTML = 'Saved to <a href="../sessions/">Sessions</a> — log the weights ' +
-      'and reps there when you train it.';
-    $('#status').className = 'status';
-    window.scrollTo({top:0, behavior:'smooth'});
-    return;
-  }
-  if (e.target.id === 'copy') {
-    navigator.clipboard.writeText(asText(CURRENT))
-      .then(() => $('#copystatus').textContent = 'Copied.')
-      .catch(() => $('#copystatus').textContent = 'Copy failed — select and copy by hand.');
-    return;
-  }
-  if (e.target.id === 'clear') {
-    drop(K.current); CURRENT = null; $('#out').hidden = true; $('#out').innerHTML = '';
-    setForm(true);
-  }
-});
-
 $('#hist').addEventListener('click', e => {
   const open = e.target.closest('.hopen');
   if (open) {
@@ -962,27 +773,22 @@ $('#hist').addEventListener('click', e => {
   }
 });
 
-function asText(S) {
-  let t = `Session — ${S.total} min\n`;
-  S.blocks.forEach(b => {
-    t += `\n${b.title} (${b.mins} min)\n${b.sub}\n`;
-    b.items.forEach(it => { const sm = setsSummary(it);
-      t += `  · ${it.name}${it.detail?' — '+it.detail:''}${sm?'  ['+sm+']':''}\n`; });
-  });
-  if (S.excluded) t += `\n${S.excluded}\n`;
-  return t;
-}
-
+// Building is one move: draw it, file it under Sessions, and open it there. Nothing is
+// held in the builder — the session you are about to train is the only copy.
 $('#cfg').addEventListener('submit', e => {
   e.preventDefault();
   const S = build();
   if (S.error) {
     $('#status').textContent = S.error; $('#status').className = 'status err';
-    $('#out').hidden = true; return;
+    return;
   }
-  $('#status').textContent = ''; $('#status').className = 'status';
-  render(S); setForm(false);
-  $('#out').scrollIntoView({behavior:'smooth', block:'start'});
+  const plan = {...S, id: newId(), status: 'planned', date: new Date().toISOString()};
+  SESSIONS.unshift(plan);
+  SESSIONS = SESSIONS.slice(0, 80); saveSessions();
+  $('#status').textContent = 'Built. Opening it under Sessions…';
+  $('#status').className = 'status';
+  setForm(false);
+  location.href = '../sessions/#' + encodeURIComponent(plan.id);
 });
 
 /* ===================================================================== init == */
@@ -994,11 +800,10 @@ renderSessions();
 loadReadiness();
 readBar();
 setBar();
-// A draft left over from when saved sessions were logged in here belongs to Sessions now —
-// the saved copy is untouched, so drop the draft rather than offering to save it twice.
-if (CURRENT && CURRENT.savedId) { drop(K.current); CURRENT = null; }
-if (CURRENT && CURRENT.blocks) { render(CURRENT); setForm(false); }
-else setForm(true);
+// Drafts used to live here between building and saving. There is no between any more,
+// so anything left in that slot is stale — the saved sessions themselves are untouched.
+drop(K.current);
+setForm(true);
 </script>
 </body>
 </html>

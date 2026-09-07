@@ -26,12 +26,19 @@ style.css             the whole design system
 
 ## Adding a session
 
-Build one in `builder/` and press Save. The plan is text only — movements and a
-set-and-rep target, no input boxes. Saving hands it to `sessions/` and clears the
-builder, and the weights and reps are typed in there while you train it, prefilled
-with what you lifted last time or an ordinary starting load if there is no last
-time. Sessions live in the browser's local storage, not in this repository —
-there are no per-session HTML files.
+Set the constraints in `builder/` and press **Build and open the session**. That one
+press draws the session, files it under `sessions/` and opens it there — the builder
+keeps nothing. If what you asked for doesn't fit the time, it says so and saves
+nothing.
+
+The plan itself is text: movements and a set-and-rep target. Weights and reps are
+typed in on the session, prefilled with what you lifted last time or an ordinary
+starting load if there is no last time, and saved as you type. A movement can be
+swapped for another there — the machine is taken, the shoulder says no. **Mark as
+done** files it into history, which is what the builder steers away from next time.
+
+Sessions live in the browser's local storage, not in this repository — there are no
+per-session HTML files.
 
 ## private/
 
