@@ -172,6 +172,57 @@ function plannedSets(it, done) {
   });
 }
 
+/* The prompt you paste into your tracker's own AI chat to get the workout logged there. It
+   is a statement, not a question: the session is drawn, saved and open in front of you. So it
+   says what you are doing, with the weights you plan to lift, and asks for it back as a
+   workout ready to save. Nothing about recovery, nothing to argue with. */
+
+// which tracker's chat this is headed for — set in the builder's readiness panel
+const TRACKER_KEY = 'tl.tracker';
+const trackerName = () => {
+  try { return localStorage.getItem(TRACKER_KEY) || 'Whoop'; } catch (_) { return 'Whoop'; }
+};
+
+function trackerSessionPrompt(S, done) {
+  const L = [];
+
+  L.push(`I'm training today and I log my workouts in ${trackerName()}. Here is exactly what`);
+  L.push('I am doing. Set it up as a workout I can save and log.');
+  L.push('');
+  L.push(`TODAY — ${S.total} min in total`);
+
+  (S.blocks || []).forEach(b => {
+    L.push('');
+    L.push(`${b.title} — ${b.mins} min`);
+    if (b.sub) L.push(`  ${b.sub}`);
+    (b.items || []).forEach(it => {
+      const pat = String(it.pattern || '').split('|')[0];
+      if (!LOGGABLE.has(pat)) {           // mobility, core, finisher: as prescribed, no load
+        L.push(`  - ${it.name}${it.detail ? ' — ' + it.detail : ''}`);
+        return;
+      }
+      // one line per movement, carrying the loads in the boxes — corrections included
+      const sets = Array.isArray(it.sets) && it.sets.length ? it.sets : plannedSets(it, done);
+      const shown = sets.map(st => {
+        const kg = st.kg === 'BW' ? 'bodyweight' : (st.kg ? st.kg + ' kg' : 'no load set');
+        return `${kg} × ${st.reps || '?'}`;
+      });
+      const same = shown.every(x => x === shown[0]);
+      L.push(`  - ${it.name} — ${sets.length} sets: ` +
+             (same ? `${shown[0]} each` : shown.join(', ')));
+    });
+  });
+
+  L.push('');
+  L.push('The weights are what I lifted last time, or an ordinary starting load where the');
+  L.push('movement is new to me. I will correct them in the app if the day goes differently.');
+  L.push('');
+  L.push('Build it as a workout ready to save and log: closest activity type, the duration');
+  L.push('above, and the movements in with their sets, reps and weights. This is what I am');
+  L.push('doing today — I am not asking whether I should.');
+  return L.join('\n');
+}
+
 /* Drawing a movement. The builder uses these to lay out a session; Sessions uses them again
    when you swap something out mid-session. One copy, so the two can't drift apart. */
 

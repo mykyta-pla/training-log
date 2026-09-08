@@ -8,7 +8,7 @@
   <meta name="description" content="Build a training session: pick a duration and the blocks you want, and it draws the movements — avoiding what you did last week and whatever you need to stay away from.">
   <link rel="stylesheet" href="../style.css">
   <script src="../movements.js"></script>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%230e0f11'/%3E%3Cpath d='M4 8h8M4 5.5h8M4 10.5h8' stroke='%237fd1c4' stroke-width='1.3'/%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%230e0f11'/%3E%3Cpath d='M4 8h8M4 5.5h8M4 10.5h8' stroke='%23ff7a1a' stroke-width='1.3'/%3E%3C/svg%3E">
 </head>
 <body>
 <div class="wrap">
@@ -474,12 +474,10 @@ $('#rdbrief').addEventListener('click', () => {
     .catch(() => $('#rdstatus').textContent = 'Copy failed — your browser blocked it.');
 });
 
-// Whoop by default, because that is what the select opens on — but the prompt and the
-// button that copies it follow whatever tracker is chosen.
-const trackerName = () => ($('#r_dev') && $('#r_dev').value) || 'Whoop';
+// Remembered here, used over on Sessions: the prompt you hand your tracker names it.
+try { $('#r_dev').value = trackerName(); } catch (_) {}
 $('#r_dev').addEventListener('change', () => {
-  const b = $('#whoop');
-  if (b) b.textContent = `copy ${trackerName()} prompt`;
+  try { localStorage.setItem(TRACKER_KEY, $('#r_dev').value); } catch (_) {}
 });
 
 function trackerPrompt() {
@@ -580,52 +578,6 @@ function briefForClaude() {
   L.push('Give me one session: which blocks, which movements, sets and reps, and one line');
   L.push('on why you chose it given the readiness numbers. If the numbers say I should train');
   L.push('lighter or not at all, say so plainly rather than finding me something to do.');
-  return L.join('\n');
-}
-
-// The prompt you paste into your tracker's own AI chat to get the workout logged there.
-// It is a statement, not a question: the session is already drawn and you have already
-// approved it by pressing the button. So it says what you are doing, with the weights you
-// plan to lift, and asks for it back as a workout ready to save. Nothing about recovery,
-// nothing to argue with.
-function trackerSessionPrompt(S) {
-  const done = doneOnly();
-  const L = [];
-
-  L.push(`I'm training today and I log my workouts in ${trackerName()}. Here is exactly what`);
-  L.push('I am doing. Set it up as a workout I can save and log.');
-  L.push('');
-  L.push(`TODAY — ${S.total} min in total`);
-
-  (S.blocks || []).forEach(b => {
-    L.push('');
-    L.push(`${b.title} — ${b.mins} min`);
-    if (b.sub) L.push(`  ${b.sub}`);
-    (b.items || []).forEach(it => {
-      const pat = String(it.pattern || '').split('|')[0];
-      if (!LOGGABLE.has(pat)) {           // mobility, core, finisher: as prescribed, no load
-        L.push(`  - ${it.name}${it.detail ? ' — ' + it.detail : ''}`);
-        return;
-      }
-      // one line per movement, carrying the loads Sessions would put in the boxes
-      const sets = Array.isArray(it.sets) && it.sets.length ? it.sets : plannedSets(it, done);
-      const shown = sets.map(st => {
-        const kg = st.kg === 'BW' ? 'bodyweight' : (st.kg ? st.kg + ' kg' : 'no load set');
-        return `${kg} × ${st.reps || '?'}`;
-      });
-      const same = shown.every(x => x === shown[0]);
-      L.push(`  - ${it.name} — ${sets.length} sets: ` +
-             (same ? `${shown[0]} each` : shown.join(', ')));
-    });
-  });
-
-  L.push('');
-  L.push('The weights are what I lifted last time, or an ordinary starting load where the');
-  L.push('movement is new to me. I will correct them in the app if the day goes differently.');
-  L.push('');
-  L.push('Build it as a workout ready to save and log: closest activity type, the duration');
-  L.push('above, and the movements in with their sets, reps and weights. This is what I am');
-  L.push('doing today — I am not asking whether I should.');
   return L.join('\n');
 }
 
@@ -840,7 +792,6 @@ function render(S) {
           <p class="minor">Saving files it under <a href="../sessions/">Sessions</a> and takes
              you there. Open it when you train it — that is where the weights and reps go.</p>
           <p class="minor"><button type="button" class="link" id="copy">copy as text</button>
-             · <button type="button" class="link" id="whoop">copy ${esc(trackerName())} prompt</button>
              · <button type="button" class="link" id="clear">discard</button></p>
           <p class="status" id="copystatus"></p>
         </div>`;
@@ -928,14 +879,6 @@ $('#out').addEventListener('click', e => {
     navigator.clipboard.writeText(asText(CURRENT))
       .then(() => $('#copystatus').textContent = 'Copied.')
       .catch(() => $('#copystatus').textContent = 'Copy failed — select and copy by hand.');
-    return;
-  }
-  if (e.target.id === 'whoop') {
-    const name = trackerName();
-    navigator.clipboard.writeText(trackerSessionPrompt(CURRENT))
-      .then(() => $('#copystatus').textContent =
-        `Copied. Paste it into ${name} and it builds the workout, ready to log.`)
-      .catch(() => $('#copystatus').textContent = 'Copy failed — your browser blocked it.');
     return;
   }
   if (e.target.id === 'clear') {
