@@ -236,7 +236,6 @@ const FOCUS = {
 };
 
 const REPS = {hinge:'5–8', squat:'6–10', push:'6–10', pull:'6–10', acc:'10–15'};
-const LOGGABLE = new Set(['hinge','squat','push','pull','acc']);
 
 /* ============================================================== storage == */
 
@@ -583,62 +582,49 @@ function briefForClaude() {
   return L.join('\n');
 }
 
-// For your tracker's own AI chat. It can already see this morning's recovery, sleep and
-// yesterday's strain — no point pasting numbers back at it. What it cannot see is the
-// session drawn here, what you keep away from, and what you actually lifted last week.
+// The prompt you paste into your tracker's own AI chat to get the workout logged there.
+// It is a statement, not a question: the session is already drawn and you have already
+// approved it by pressing the button. So it says what you are doing, with the weights you
+// plan to lift, and asks for it back as a workout ready to save. Nothing about recovery,
+// nothing to argue with.
 function trackerSessionPrompt(S) {
-  const dev = trackerName();
-  const kit = {0:'bodyweight only', 1:'bodyweight and bands', 2:'dumbbells, bands and bodyweight',
-               3:'a full gym'}[S.equip != null ? +S.equip : +one('equip')];
-  const avoidLabels = (S.avoid || []).map(v => {
-    const c = document.querySelector(`#avoid .chip[data-v="${v}"]`);
-    return c ? c.textContent.trim().toLowerCase() : v;
-  });
-
+  const done = doneOnly();
   const L = [];
-  L.push(`I train with ${dev}. You can see today's recovery, sleep and yesterday's strain —`);
-  L.push('use them. Don’t ask me to type them in.');
+
+  L.push(`I'm training today and I log my workouts in ${trackerName()}. Here is exactly what`);
+  L.push('I am doing. Set it up as a workout I can save and log.');
   L.push('');
-  L.push('Here is the session I have drawn for today. Turn it into the one I should actually do.');
-  L.push('');
-  L.push(`THE DRAFT — ${S.total} min`);
+  L.push(`TODAY — ${S.total} min in total`);
+
   (S.blocks || []).forEach(b => {
-    L.push(`${b.title} (${b.mins} min)`);
-    if (b.sub) L.push(`  ${b.sub}`);
-    (b.items || []).forEach(it => L.push(`  - ${it.name}${it.detail ? ' — ' + it.detail : ''}`));
-  });
-  L.push('');
-  L.push('CONSTRAINTS');
-  L.push(`- ${S.total} minutes, hard limit`);
-  L.push(`- Equipment: ${kit}`);
-  L.push(avoidLabels.length
-    ? `- Nothing involving: ${avoidLabels.join(', ')}`
-    : '- No movement restrictions today');
-  if (RD && RD.note) L.push(`- In my words this morning: ${RD.note}`);
-  L.push('');
-
-  const done = doneOnly().slice(0, 3);
-  if (done.length) {
-    L.push(`MY LAST ${done.length} SESSION${done.length === 1 ? '' : 'S'} (most recent first)`);
-    done.forEach(s => {
-      L.push(`- ${fmtDate(s.date)}:`);
-      (s.blocks || []).forEach(b => (b.items || []).forEach(it => {
-        const sm = setsSummary(it);
-        L.push(`    ${it.name}${sm ? '  [' + sm + ']' : ''}`);
-      }));
-    });
-    L.push('Don’t give me back what I did in the last session or two.');
     L.push('');
-  }
+    L.push(`${b.title} — ${b.mins} min`);
+    if (b.sub) L.push(`  ${b.sub}`);
+    (b.items || []).forEach(it => {
+      const pat = String(it.pattern || '').split('|')[0];
+      if (!LOGGABLE.has(pat)) {           // mobility, core, finisher: as prescribed, no load
+        L.push(`  - ${it.name}${it.detail ? ' — ' + it.detail : ''}`);
+        return;
+      }
+      // one line per movement, carrying the loads Sessions would put in the boxes
+      const sets = Array.isArray(it.sets) && it.sets.length ? it.sets : plannedSets(it, done);
+      const shown = sets.map(st => {
+        const kg = st.kg === 'BW' ? 'bodyweight' : (st.kg ? st.kg + ' kg' : 'no load set');
+        return `${kg} × ${st.reps || '?'}`;
+      });
+      const same = shown.every(x => x === shown[0]);
+      L.push(`  - ${it.name} — ${sets.length} sets: ` +
+             (same ? `${shown[0]} each` : shown.join(', ')));
+    });
+  });
 
-  L.push('WHAT I WANT BACK');
-  L.push('1. Whether today should be this session, an easier one, or nothing at all.');
-  L.push('2. If I train: the session as blocks, movements, sets, reps, and a load or an');
-  L.push('   effort for each. Cut or swap whatever you like, but stay inside the time and');
-  L.push('   the constraints above, and only use equipment I said I have.');
-  L.push('3. One line on why, in terms of the numbers you can see.');
   L.push('');
-  L.push('No pep talk and no padding. If the numbers say rest, say rest.');
+  L.push('The weights are what I lifted last time, or an ordinary starting load where the');
+  L.push('movement is new to me. I will correct them in the app if the day goes differently.');
+  L.push('');
+  L.push('Build it as a workout ready to save and log: closest activity type, the duration');
+  L.push('above, and the movements in with their sets, reps and weights. This is what I am');
+  L.push('doing today — I am not asking whether I should.');
   return L.join('\n');
 }
 
@@ -774,22 +760,6 @@ function build() {
 
 let CURRENT = read(K.current, null);
 
-// the sets you actually logged last time you did this movement
-function lastSets(name) {
-  for (const s of doneOnly()) {
-    for (const b of s.blocks || []) {
-      for (const it of b.items || []) {
-        if (it.name === name && Array.isArray(it.sets) && it.sets.some(x => x.kg || x.reps))
-          return it.sets;
-      }
-    }
-  }
-  return null;
-}
-const setLabel = st => (st && (st.kg || st.reps))
-  ? `${st.kg || '—'}${st.reps ? ' × ' + st.reps : ''}` : '';
-const setsSummary = it => Array.isArray(it.sets)
-  ? it.sets.map(setLabel).filter(Boolean).join(', ') : (it.load || '');
 
 // last logged load for a movement, and how long ago
 function lastLog(name) {
@@ -836,7 +806,7 @@ function render(S) {
       h += '<ul class="exlist">';
       b.items.forEach((it, ii) => {
         const pat = it.pattern.split('|')[0];
-        const ps = LOGGABLE.has(pat) ? lastSets(it.name) : null;
+        const ps = LOGGABLE.has(pat) ? lastLoggedSets(it.name, doneOnly()) : null;
         const prev = ps ? {load: ps.map(setLabel).filter(Boolean).slice(0, 3).join(', ')}
                         : (LOGGABLE.has(pat) ? lastLog(it.name) : null);
         h += `<li class="exrow">
@@ -963,7 +933,7 @@ $('#out').addEventListener('click', e => {
     const name = trackerName();
     navigator.clipboard.writeText(trackerSessionPrompt(CURRENT))
       .then(() => $('#copystatus').textContent =
-        `Copied. Paste it into ${name}’s coach chat — it reads your recovery itself.`)
+        `Copied. Paste it into ${name} and it builds the workout, ready to log.`)
       .catch(() => $('#copystatus').textContent = 'Copy failed — your browser blocked it.');
     return;
   }
