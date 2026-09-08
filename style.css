@@ -351,6 +351,8 @@ footer a { color: var(--muted); }
 
 .sessions .swap.sdel { margin-left: auto; }
 .sessions li.hdetail { display: block; padding: 0 0 .9rem; border-bottom: 1px solid var(--line); }
+/* a closed detail row is closed: the display rules above outrank the [hidden] default */
+.sessions li[hidden] { display: none; }
 .hbody .sub-note { margin: .7rem 0 .25rem; }
 ul.plain { list-style: none; padding: 0; margin: 0 0 .3rem; }
 ul.plain li {
