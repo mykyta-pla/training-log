@@ -126,6 +126,52 @@ const START_KG = {
   'Lateral raise':7, 'Biceps curl':10, 'Triceps extension':12, 'Calf raise':20, 'Rear delt fly':7,
 };
 
+/* Planned loads. What goes in the boxes before you have typed anything, and how a set reads
+   back as text. Sessions fills its log with these; the builder puts the same numbers into the
+   prompt it hands your tracker, so the workout you log there is the one you planned here. */
+
+// Only these carry a load worth logging. Mobility, core and finishers are ticked, not weighed.
+const LOGGABLE = new Set(['hinge', 'squat', 'push', 'pull', 'acc']);
+
+const setLabel = st => (st && (st.kg || st.reps))
+  ? `${st.kg || '—'}${st.reps ? ' × ' + st.reps : ''}` : '';
+
+const setsSummary = it => Array.isArray(it.sets)
+  ? it.sets.map(setLabel).filter(Boolean).join(', ') : (it.load || '');
+
+// the sets you logged the last time this movement came up in a finished session
+function lastLoggedSets(name, done) {
+  for (const s of done || []) {
+    for (const b of s.blocks || []) {
+      for (const it of b.items || []) {
+        if (it.name === name && Array.isArray(it.sets) && it.sets.some(x => x.kg || x.reps))
+          return it.sets;
+      }
+    }
+  }
+  return null;
+}
+
+// "3 × 6–10" is 3 sets of 6; "8–12 reps" is 8. The bottom of the range, not the top.
+const setCount   = d => { const m = (d || '').match(/^(\d+)\s*×/); return m ? Math.min(8, Math.max(1, +m[1])) : 3; };
+const targetReps = d => { const m = (d || '').match(/(\d+)\s*[–—-]\s*(\d+)/); return m ? m[1] : ''; };
+const startLoad  = n => { const v = START_KG[n]; return v == null ? '' : String(v); };
+
+// What you lifted last time wins, set by set; otherwise an ordinary starting load.
+function plannedSets(it, done) {
+  const n = setCount(it.detail), reps = targetReps(it.detail);
+  const prev = lastLoggedSets(it.name, done);
+  return Array.from({length: n}, (_, i) => {
+    const p = prev && prev[i];
+    return {
+      kg:   (p && p.kg)   ? p.kg   : startLoad(it.name),
+      reps: (p && p.reps) ? p.reps : reps,
+      done: false,
+      prev: setLabel(p),
+    };
+  });
+}
+
 /* Drawing a movement. The builder uses these to lay out a session; Sessions uses them again
    when you swap something out mid-session. One copy, so the two can't drift apart. */
 

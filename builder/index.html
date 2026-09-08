@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0c0e">
   <title>Session builder &middot; notaroutine</title>
   <meta name="description" content="Build a training session: pick a duration and the blocks you want, and it draws the movements — avoiding what you did last week and whatever you need to stay away from.">
   <link rel="stylesheet" href="../style.css">
@@ -236,7 +237,6 @@ const FOCUS = {
 };
 
 const REPS = {hinge:'5–8', squat:'6–10', push:'6–10', pull:'6–10', acc:'10–15'};
-const LOGGABLE = new Set(['hinge','squat','push','pull','acc']);
 
 /* ============================================================== storage == */
 
@@ -474,6 +474,14 @@ $('#rdbrief').addEventListener('click', () => {
     .catch(() => $('#rdstatus').textContent = 'Copy failed — your browser blocked it.');
 });
 
+// Whoop by default, because that is what the select opens on — but the prompt and the
+// button that copies it follow whatever tracker is chosen.
+const trackerName = () => ($('#r_dev') && $('#r_dev').value) || 'Whoop';
+$('#r_dev').addEventListener('change', () => {
+  const b = $('#whoop');
+  if (b) b.textContent = `copy ${trackerName()} prompt`;
+});
+
 function trackerPrompt() {
   const dev = $('#r_dev').value || 'my tracker';
   return [
@@ -575,6 +583,52 @@ function briefForClaude() {
   return L.join('\n');
 }
 
+// The prompt you paste into your tracker's own AI chat to get the workout logged there.
+// It is a statement, not a question: the session is already drawn and you have already
+// approved it by pressing the button. So it says what you are doing, with the weights you
+// plan to lift, and asks for it back as a workout ready to save. Nothing about recovery,
+// nothing to argue with.
+function trackerSessionPrompt(S) {
+  const done = doneOnly();
+  const L = [];
+
+  L.push(`I'm training today and I log my workouts in ${trackerName()}. Here is exactly what`);
+  L.push('I am doing. Set it up as a workout I can save and log.');
+  L.push('');
+  L.push(`TODAY — ${S.total} min in total`);
+
+  (S.blocks || []).forEach(b => {
+    L.push('');
+    L.push(`${b.title} — ${b.mins} min`);
+    if (b.sub) L.push(`  ${b.sub}`);
+    (b.items || []).forEach(it => {
+      const pat = String(it.pattern || '').split('|')[0];
+      if (!LOGGABLE.has(pat)) {           // mobility, core, finisher: as prescribed, no load
+        L.push(`  - ${it.name}${it.detail ? ' — ' + it.detail : ''}`);
+        return;
+      }
+      // one line per movement, carrying the loads Sessions would put in the boxes
+      const sets = Array.isArray(it.sets) && it.sets.length ? it.sets : plannedSets(it, done);
+      const shown = sets.map(st => {
+        const kg = st.kg === 'BW' ? 'bodyweight' : (st.kg ? st.kg + ' kg' : 'no load set');
+        return `${kg} × ${st.reps || '?'}`;
+      });
+      const same = shown.every(x => x === shown[0]);
+      L.push(`  - ${it.name} — ${sets.length} sets: ` +
+             (same ? `${shown[0]} each` : shown.join(', ')));
+    });
+  });
+
+  L.push('');
+  L.push('The weights are what I lifted last time, or an ordinary starting load where the');
+  L.push('movement is new to me. I will correct them in the app if the day goes differently.');
+  L.push('');
+  L.push('Build it as a workout ready to save and log: closest activity type, the duration');
+  L.push('above, and the movements in with their sets, reps and weights. This is what I am');
+  L.push('doing today — I am not asking whether I should.');
+  return L.join('\n');
+}
+
 /* =================================================================== build == */
 
 function build() {
@@ -614,7 +668,7 @@ function build() {
 
   const rec = recencyMap(doneOnly(), depth);
   const used = new Set();
-  const S = {total, blocks:[], avoid, note:[], depth, readiness:V.why,
+  const S = {total, equip, blocks:[], avoid, note:[], depth, readiness:V.why,
              built:new Date().toISOString()};
   let repeated = 0;
 
@@ -707,22 +761,6 @@ function build() {
 
 let CURRENT = read(K.current, null);
 
-// the sets you actually logged last time you did this movement
-function lastSets(name) {
-  for (const s of doneOnly()) {
-    for (const b of s.blocks || []) {
-      for (const it of b.items || []) {
-        if (it.name === name && Array.isArray(it.sets) && it.sets.some(x => x.kg || x.reps))
-          return it.sets;
-      }
-    }
-  }
-  return null;
-}
-const setLabel = st => (st && (st.kg || st.reps))
-  ? `${st.kg || '—'}${st.reps ? ' × ' + st.reps : ''}` : '';
-const setsSummary = it => Array.isArray(it.sets)
-  ? it.sets.map(setLabel).filter(Boolean).join(', ') : (it.load || '');
 
 // last logged load for a movement, and how long ago
 function lastLog(name) {
@@ -769,7 +807,7 @@ function render(S) {
       h += '<ul class="exlist">';
       b.items.forEach((it, ii) => {
         const pat = it.pattern.split('|')[0];
-        const ps = LOGGABLE.has(pat) ? lastSets(it.name) : null;
+        const ps = LOGGABLE.has(pat) ? lastLoggedSets(it.name, doneOnly()) : null;
         const prev = ps ? {load: ps.map(setLabel).filter(Boolean).slice(0, 3).join(', ')}
                         : (LOGGABLE.has(pat) ? lastLog(it.name) : null);
         h += `<li class="exrow">
@@ -802,6 +840,7 @@ function render(S) {
           <p class="minor">Saving files it under <a href="../sessions/">Sessions</a> and takes
              you there. Open it when you train it — that is where the weights and reps go.</p>
           <p class="minor"><button type="button" class="link" id="copy">copy as text</button>
+             · <button type="button" class="link" id="whoop">copy ${esc(trackerName())} prompt</button>
              · <button type="button" class="link" id="clear">discard</button></p>
           <p class="status" id="copystatus"></p>
         </div>`;
@@ -889,6 +928,14 @@ $('#out').addEventListener('click', e => {
     navigator.clipboard.writeText(asText(CURRENT))
       .then(() => $('#copystatus').textContent = 'Copied.')
       .catch(() => $('#copystatus').textContent = 'Copy failed — select and copy by hand.');
+    return;
+  }
+  if (e.target.id === 'whoop') {
+    const name = trackerName();
+    navigator.clipboard.writeText(trackerSessionPrompt(CURRENT))
+      .then(() => $('#copystatus').textContent =
+        `Copied. Paste it into ${name} and it builds the workout, ready to log.`)
+      .catch(() => $('#copystatus').textContent = 'Copy failed — your browser blocked it.');
     return;
   }
   if (e.target.id === 'clear') {

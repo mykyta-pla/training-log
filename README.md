@@ -33,6 +33,14 @@ draws a list of movements, each with a set-and-rep target as text — no input b
 Swap anything you don't want, or draw the whole thing again. Nothing is saved yet, and
 if what you asked for doesn't fit the time it says so and draws nothing.
 
+**Tell your tracker what you're doing.** Training gets logged in Whoop, and Whoop
+needs telling first. `copy Whoop prompt` puts the drawn session on the clipboard as a
+statement — every block, every movement, the sets and reps, and the weights it would
+prefill (last time's, or a starting load for a movement you haven't done) — ending in
+"set this up as a workout I can save and log". It asks nothing and argues nothing: the
+session is drawn and you approved it by pressing the button. The tracker name follows
+whichever one is picked in the readiness panel.
+
 **Save it.** **Save session** files the plan under `sessions/` and takes you to the
 list of everything you've built. The builder is empty again.
 
