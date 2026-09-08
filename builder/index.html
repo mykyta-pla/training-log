@@ -474,6 +474,14 @@ $('#rdbrief').addEventListener('click', () => {
     .catch(() => $('#rdstatus').textContent = 'Copy failed — your browser blocked it.');
 });
 
+// Whoop by default, because that is what the select opens on — but the prompt and the
+// button that copies it follow whatever tracker is chosen.
+const trackerName = () => ($('#r_dev') && $('#r_dev').value) || 'Whoop';
+$('#r_dev').addEventListener('change', () => {
+  const b = $('#whoop');
+  if (b) b.textContent = `copy ${trackerName()} prompt`;
+});
+
 function trackerPrompt() {
   const dev = $('#r_dev').value || 'my tracker';
   return [
@@ -575,6 +583,65 @@ function briefForClaude() {
   return L.join('\n');
 }
 
+// For your tracker's own AI chat. It can already see this morning's recovery, sleep and
+// yesterday's strain — no point pasting numbers back at it. What it cannot see is the
+// session drawn here, what you keep away from, and what you actually lifted last week.
+function trackerSessionPrompt(S) {
+  const dev = trackerName();
+  const kit = {0:'bodyweight only', 1:'bodyweight and bands', 2:'dumbbells, bands and bodyweight',
+               3:'a full gym'}[S.equip != null ? +S.equip : +one('equip')];
+  const avoidLabels = (S.avoid || []).map(v => {
+    const c = document.querySelector(`#avoid .chip[data-v="${v}"]`);
+    return c ? c.textContent.trim().toLowerCase() : v;
+  });
+
+  const L = [];
+  L.push(`I train with ${dev}. You can see today's recovery, sleep and yesterday's strain —`);
+  L.push('use them. Don’t ask me to type them in.');
+  L.push('');
+  L.push('Here is the session I have drawn for today. Turn it into the one I should actually do.');
+  L.push('');
+  L.push(`THE DRAFT — ${S.total} min`);
+  (S.blocks || []).forEach(b => {
+    L.push(`${b.title} (${b.mins} min)`);
+    if (b.sub) L.push(`  ${b.sub}`);
+    (b.items || []).forEach(it => L.push(`  - ${it.name}${it.detail ? ' — ' + it.detail : ''}`));
+  });
+  L.push('');
+  L.push('CONSTRAINTS');
+  L.push(`- ${S.total} minutes, hard limit`);
+  L.push(`- Equipment: ${kit}`);
+  L.push(avoidLabels.length
+    ? `- Nothing involving: ${avoidLabels.join(', ')}`
+    : '- No movement restrictions today');
+  if (RD && RD.note) L.push(`- In my words this morning: ${RD.note}`);
+  L.push('');
+
+  const done = doneOnly().slice(0, 3);
+  if (done.length) {
+    L.push(`MY LAST ${done.length} SESSION${done.length === 1 ? '' : 'S'} (most recent first)`);
+    done.forEach(s => {
+      L.push(`- ${fmtDate(s.date)}:`);
+      (s.blocks || []).forEach(b => (b.items || []).forEach(it => {
+        const sm = setsSummary(it);
+        L.push(`    ${it.name}${sm ? '  [' + sm + ']' : ''}`);
+      }));
+    });
+    L.push('Don’t give me back what I did in the last session or two.');
+    L.push('');
+  }
+
+  L.push('WHAT I WANT BACK');
+  L.push('1. Whether today should be this session, an easier one, or nothing at all.');
+  L.push('2. If I train: the session as blocks, movements, sets, reps, and a load or an');
+  L.push('   effort for each. Cut or swap whatever you like, but stay inside the time and');
+  L.push('   the constraints above, and only use equipment I said I have.');
+  L.push('3. One line on why, in terms of the numbers you can see.');
+  L.push('');
+  L.push('No pep talk and no padding. If the numbers say rest, say rest.');
+  return L.join('\n');
+}
+
 /* =================================================================== build == */
 
 function build() {
@@ -614,7 +681,7 @@ function build() {
 
   const rec = recencyMap(doneOnly(), depth);
   const used = new Set();
-  const S = {total, blocks:[], avoid, note:[], depth, readiness:V.why,
+  const S = {total, equip, blocks:[], avoid, note:[], depth, readiness:V.why,
              built:new Date().toISOString()};
   let repeated = 0;
 
@@ -802,6 +869,7 @@ function render(S) {
           <p class="minor">Saving files it under <a href="../sessions/">Sessions</a> and takes
              you there. Open it when you train it — that is where the weights and reps go.</p>
           <p class="minor"><button type="button" class="link" id="copy">copy as text</button>
+             · <button type="button" class="link" id="whoop">copy ${esc(trackerName())} prompt</button>
              · <button type="button" class="link" id="clear">discard</button></p>
           <p class="status" id="copystatus"></p>
         </div>`;
@@ -889,6 +957,14 @@ $('#out').addEventListener('click', e => {
     navigator.clipboard.writeText(asText(CURRENT))
       .then(() => $('#copystatus').textContent = 'Copied.')
       .catch(() => $('#copystatus').textContent = 'Copy failed — select and copy by hand.');
+    return;
+  }
+  if (e.target.id === 'whoop') {
+    const name = trackerName();
+    navigator.clipboard.writeText(trackerSessionPrompt(CURRENT))
+      .then(() => $('#copystatus').textContent =
+        `Copied. Paste it into ${name}’s coach chat — it reads your recovery itself.`)
+      .catch(() => $('#copystatus').textContent = 'Copy failed — your browser blocked it.');
     return;
   }
   if (e.target.id === 'clear') {

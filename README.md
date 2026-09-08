@@ -33,6 +33,14 @@ draws a list of movements, each with a set-and-rep target as text — no input b
 Swap anything you don't want, or draw the whole thing again. Nothing is saved yet, and
 if what you asked for doesn't fit the time it says so and draws nothing.
 
+**Hand it to your tracker, if you want a second opinion.** `copy Whoop prompt` puts a
+prompt on the clipboard for the coach chat in Whoop — or Oura, Garmin, whichever is
+picked in the readiness panel. It carries the drawn session, the time and equipment
+limits, what you're avoiding, anything you typed about how you feel, and your last
+three sessions with the loads. It does not carry your recovery numbers: the tracker
+already has those, and is told to use them and to say so plainly if today should be
+a rest day.
+
 **Save it.** **Save session** files the plan under `sessions/` and takes you to the
 list of everything you've built. The builder is empty again.
 
