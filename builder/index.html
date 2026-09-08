@@ -256,7 +256,6 @@ const saveSessions = () => write(K.history, SESSIONS);
 
 const $  = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
-const pick = a => a[Math.floor(Math.random() * a.length)];
 const esc = s => String(s == null ? '' : s).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
 const fmtDate = iso => new Date(iso).toLocaleDateString(undefined, {day:'2-digit', month:'short', year:'2-digit'});
 
@@ -342,37 +341,6 @@ function loadPrefs() {
     $('#'+sub).classList.toggle('off', !$('#'+cb).checked));
 }
 ['b_core','b_fin'].forEach(id => $('#'+id).addEventListener('change', savePrefs));
-
-/* ============================================== selection with a memory == */
-
-// how many sessions back a movement was last used. 0 = this many sessions ago.
-function recencyMap(depth) {
-  const m = new Map();
-  if (!depth) return m;
-  doneOnly().slice(0, depth).forEach((s, i) => {
-    (s.blocks || []).forEach(b => (b.items || []).forEach(it => {
-      if (!m.has(it.name)) m.set(it.name, i);   // i = sessions ago
-    }));
-  });
-  return m;
-}
-
-function eligible(pattern, equip, avoid, used) {
-  const pats = pattern.split('|');
-  return LIB.filter(x => pats.includes(x.p) && x.e <= equip &&
-    !x.a.some(t => avoid.includes(t)) && !used.has(x.n));
-}
-
-// Prefer movements not seen recently. Never fails while any candidate exists:
-// falls back to the least recently used rather than returning nothing.
-function pickFresh(pool, rec) {
-  if (!pool.length) return null;
-  const unseen = pool.filter(x => !rec.has(x.n));
-  if (unseen.length) return pick(unseen);
-  // everything here was used recently — take the least recent of them
-  const maxAgo = Math.max(...pool.map(x => rec.get(x.n)));
-  return pick(pool.filter(x => rec.get(x.n) === maxAgo));
-}
 
 /* ============================================================== readiness == */
 
@@ -644,7 +612,7 @@ function build() {
   if (want.str) time.str += spare; else if (want.car) time.car += spare;
   if (want.str && V.ease < 1) time.str = Math.max(12, Math.round(time.str * V.ease));
 
-  const rec = recencyMap(depth);
+  const rec = recencyMap(doneOnly(), depth);
   const used = new Set();
   const S = {total, blocks:[], avoid, note:[], depth, readiness:V.why,
              built:new Date().toISOString()};
@@ -756,15 +724,6 @@ const setLabel = st => (st && (st.kg || st.reps))
 const setsSummary = it => Array.isArray(it.sets)
   ? it.sets.map(setLabel).filter(Boolean).join(', ') : (it.load || '');
 
-function makeSets(it) {
-  const m = (it.detail || '').match(/^(\d+)\s*×/);
-  const n = m ? Math.min(8, Math.max(1, +m[1])) : 3;
-  const prev = lastSets(it.name);
-  return Array.from({length: n}, (_, i) => ({
-    kg: '', reps: '', done: false, prev: setLabel(prev && prev[i]),
-  }));
-}
-
 // last logged load for a movement, and how long ago
 function lastLog(name) {
   const done = doneOnly();
@@ -794,10 +753,9 @@ function render(S) {
   if (S.excluded) bits.push(S.excluded);
 
   const all = S.blocks.flatMap(b => b.items);
-  const ticked = all.filter(x => x.done).length;
 
   let h = `<div class="sesshead"><h2>Your session</h2>
-      <span class="prog">${ticked} of ${all.length} done</span></div>
+      <span class="prog">${all.length} movement${all.length === 1 ? '' : 's'}</span></div>
     <p class="sessmeta">${esc(bits.join(' · '))}</p>`;
   if ((S.readiness || []).length) {
     h += `<div class="note readiness"><p><strong>Adjusted for readiness.</strong><br>
@@ -814,9 +772,7 @@ function render(S) {
         const ps = LOGGABLE.has(pat) ? lastSets(it.name) : null;
         const prev = ps ? {load: ps.map(setLabel).filter(Boolean).slice(0, 3).join(', ')}
                         : (LOGGABLE.has(pat) ? lastLog(it.name) : null);
-        h += `<li class="exrow${it.done ? ' done' : ''}">
-            <button type="button" class="tick${it.done ? ' on' : ''}" data-b="${bi}" data-i="${ii}"
-              aria-pressed="${it.done ? 'true' : 'false'}" aria-label="Mark ${esc(it.name)} done"></button>
+        h += `<li class="exrow">
             <span class="ex">
               <span class="exn">${esc(it.name)}</span>
               <span class="exd">${esc(it.detail)}</span>
@@ -831,33 +787,6 @@ function render(S) {
             </a>
             <button type="button" class="swap" data-b="${bi}" data-i="${ii}">swap</button>
           </li>`;
-        if (LOGGABLE.has(pat)) {
-          if (!Array.isArray(it.sets)) it.sets = makeSets(it);
-          h += `<li class="setwrap"><table class="sets"><thead><tr>
-                  <th class="c-n">Set</th><th class="c-p">Prev</th>
-                  <th class="c-i">kg</th><th class="c-i">Reps</th><th class="c-t"></th>
-                </tr></thead><tbody>`;
-          it.sets.forEach((st, si) => {
-            h += `<tr class="${st.done ? 'sdone' : ''}">
-              <td class="c-n">${si + 1}</td>
-              <td class="c-p">${esc(st.prev || '—')}</td>
-              <td class="c-i"><input class="sfield" inputmode="decimal" data-b="${bi}" data-i="${ii}"
-                    data-s="${si}" data-f="kg" value="${esc(st.kg)}"
-                    placeholder="${esc((st.prev || '').split(' × ')[0] || '')}"></td>
-              <td class="c-i"><input class="sfield" inputmode="numeric" data-b="${bi}" data-i="${ii}"
-                    data-s="${si}" data-f="reps" value="${esc(st.reps)}"
-                    placeholder="${esc((st.prev || '').split(' × ')[1] || '')}"></td>
-              <td class="c-t"><button type="button" class="stick${st.done ? ' on' : ''}"
-                    data-b="${bi}" data-i="${ii}" data-s="${si}"
-                    aria-pressed="${st.done ? 'true' : 'false'}"
-                    aria-label="Set ${si + 1} done"></button></td>
-            </tr>`;
-          });
-          h += `</tbody></table><p class="setbtns">
-                  <button type="button" class="link addset" data-b="${bi}" data-i="${ii}">+ add set</button>
-                  ${it.sets.length > 1 ? `· <button type="button" class="link delset" data-b="${bi}" data-i="${ii}">remove last</button>` : ''}
-                </p></li>`;
-        }
       });
       h += '</ul>';
     }
@@ -865,15 +794,13 @@ function render(S) {
   });
 
   if (S.note.length) h += `<div class="note"><p>${S.note.map(esc).join('<br>')}</p></div>`;
-  const isSaved = !!S.savedId;
   h += `<div class="sessfoot">
           <div class="row">
-            ${isSaved
-              ? `<button type="button" id="done">Mark as done</button>
-                 <button type="button" class="ghost" id="back">Back to list</button>`
-              : `<button type="button" id="save">Save session</button>
-                 <button type="button" class="ghost" id="again">Draw again</button>`}
+            <button type="button" id="save">Save session</button>
+            <button type="button" class="ghost" id="again">Draw again</button>
           </div>
+          <p class="minor">Saving files it under <a href="../sessions/">Sessions</a> and takes
+             you there. Open it when you train it — that is where the weights and reps go.</p>
           <p class="minor"><button type="button" class="link" id="copy">copy as text</button>
              · <button type="button" class="link" id="clear">discard</button></p>
           <p class="status" id="copystatus"></p>
@@ -894,11 +821,12 @@ function renderSessions() {
 
   if (planned.length) {
     h += `<h2>Saved and waiting</h2>
-      <p class="hint">Built, not trained yet. Open one to tick through it and log what you lifted.</p>
+      <p class="hint">Built, not trained yet. Open one under
+      <a href="../sessions/">Sessions</a> to tick through it and log what you lifted.</p>
       <ul class="sessions">`;
     planned.forEach(s => {
       h += `<li><time datetime="${esc(s.date)}">${esc(fmtDate(s.date))}</time>
-              <a href="#" class="popen" data-id="${esc(s.id)}">${label(s)}</a>
+              <a href="../sessions/#${esc(s.id)}">${label(s)}</a>
               <button type="button" class="swap sdel" data-id="${esc(s.id)}">delete</button></li>`;
     });
     h += '</ul>';
@@ -921,94 +849,40 @@ function renderSessions() {
 
 /* =================================================================== events == */
 
-$('#out').addEventListener('input', e => {
-  const f = e.target.closest('.sfield'); if (!f) return;
-  const it = CURRENT.blocks[+f.dataset.b].items[+f.dataset.i];
-  it.sets[+f.dataset.s][f.dataset.f] = f.value;
-  write(K.current, CURRENT);
-});
-
 $('#out').addEventListener('click', e => {
   const swap = e.target.closest('.swap');
   if (swap) {
     const b = CURRENT.blocks[+swap.dataset.b], i = +swap.dataset.i;
     const used = new Set(); CURRENT.blocks.forEach(bl => bl.items.forEach(x => used.add(x.name)));
     const pool = eligible(b.items[i].pattern, +one('equip'), CURRENT.avoid, used);
-    const rec = recencyMap(CURRENT.depth || 0);
+    const rec = recencyMap(doneOnly(), CURRENT.depth || 0);
     const x = pickFresh(pool, rec);
     if (!x) { $('#copystatus').textContent = 'Nothing else available for that slot.'; return; }
     b.items[i] = {...b.items[i], name:x.n, detail:x.d || b.items[i].detail,
-                  ago: rec.has(x.n) ? rec.get(x.n) : null, load:''};
+                  ago: rec.has(x.n) ? rec.get(x.n) : null};
     render(CURRENT); return;
-  }
-  const st = e.target.closest('.stick');
-  if (st) {
-    const it = CURRENT.blocks[+st.dataset.b].items[+st.dataset.i];
-    const row = it.sets[+st.dataset.s];
-    row.done = !row.done;
-    it.done = it.sets.every(x => x.done);
-    render(CURRENT); return;
-  }
-  const add = e.target.closest('.addset');
-  if (add) {
-    const it = CURRENT.blocks[+add.dataset.b].items[+add.dataset.i];
-    const last = it.sets[it.sets.length - 1] || {};
-    it.sets.push({kg:'', reps:'', done:false, prev:''});
-    it.done = false;
-    render(CURRENT); return;
-  }
-  const del = e.target.closest('.delset');
-  if (del) {
-    const it = CURRENT.blocks[+del.dataset.b].items[+del.dataset.i];
-    if (it.sets.length > 1) it.sets.pop();
-    it.done = it.sets.every(x => x.done);
-    render(CURRENT); return;
-  }
-  const tick = e.target.closest('.tick');
-  if (tick) {
-    const it = CURRENT.blocks[+tick.dataset.b].items[+tick.dataset.i];
-    it.done = !it.done;
-    if (Array.isArray(it.sets)) it.sets.forEach(x => x.done = it.done);
-    render(CURRENT);
-    return;
   }
   if (e.target.id === 'again') {
     const S = build();
     if (S.error) { $('#copystatus').textContent = S.error; return; }
     render(S); return;
   }
+  // Saving files the plan under Sessions, clears the board here, and takes you to the list —
+  // the plan carries no numbers; those are typed in on the session, where it is trained.
   if (e.target.id === 'save') {
-    const {savedId, ...rest} = CURRENT;
-    SESSIONS.unshift({...rest, id:newId(), status:'planned', date:new Date().toISOString()});
+    const plan = {
+      ...CURRENT,
+      blocks: (CURRENT.blocks || []).map(b => ({
+        ...b, items: (b.items || []).map(({sets, done, load, ...it}) => it),
+      })),
+      id: newId(), status: 'planned', date: new Date().toISOString(),
+    };
+    delete plan.savedId;
+    SESSIONS.unshift(plan);
     SESSIONS = SESSIONS.slice(0, 80); saveSessions();
     drop(K.current); CURRENT = null;
-    $('#out').hidden = true; $('#out').innerHTML = '';
-    renderSessions(); setForm(true);
-    $('#status').textContent = 'Saved. It is waiting for you under Sessions below.';
-    $('#status').className = 'status';
-    window.scrollTo({top:0, behavior:'smooth'});
-    return;
-  }
-  if (e.target.id === 'back') {
-    drop(K.current); CURRENT = null;
-    $('#out').hidden = true; $('#out').innerHTML = '';
-    renderSessions();
-    $('#hist').scrollIntoView({behavior:'smooth', block:'start'});
-    return;
-  }
-  if (e.target.id === 'done') {
-    const i = SESSIONS.findIndex(x => x.id === CURRENT.savedId);
-    if (i >= 0) {
-      const {savedId, ...rest} = CURRENT;
-      SESSIONS[i] = {...SESSIONS[i], ...rest, status:'done', date:new Date().toISOString()};
-    }
-    saveSessions();
-    drop(K.current); CURRENT = null;
-    $('#out').hidden = true; $('#out').innerHTML = '';
-    renderSessions(); setForm(true);
-    $('#status').textContent = 'Marked done. The next draw will steer away from it.';
-    $('#status').className = 'status';
-    window.scrollTo({top:0, behavior:'smooth'});
+    $('#copystatus').textContent = 'Saved. Opening Sessions…';
+    location.href = '../sessions/';
     return;
   }
   if (e.target.id === 'copy') {
@@ -1039,16 +913,6 @@ $('#hist').addEventListener('click', e => {
     });
     row.querySelector('.hbody').innerHTML = h || '<p class="sub-note">No movements recorded.</p>';
     row.hidden = false; return;
-  }
-  const popen = e.target.closest('.popen');
-  if (popen) {
-    e.preventDefault();
-    const s = SESSIONS.find(x => x.id === popen.dataset.id);
-    if (!s) return;
-    CURRENT = {...s, savedId: s.id};
-    render(CURRENT); setForm(false);
-    $('#out').scrollIntoView({behavior:'smooth', block:'start'});
-    return;
   }
   const del = e.target.closest('.sdel');
   if (del) {
@@ -1091,18 +955,12 @@ loadPrefs();
 showCardioInfo();
 showFreshHint();
 renderSessions();
-// arriving from the Sessions page with ?open=<id>
-try {
-  const want = new URLSearchParams(location.search).get('open');
-  if (want) {
-    const s = SESSIONS.find(x => x.id === want);
-    if (s) { CURRENT = {...s, savedId: s.id}; write(K.current, CURRENT); }
-    history.replaceState(null, '', location.pathname);
-  }
-} catch (_) {}
 loadReadiness();
 readBar();
 setBar();
+// A draft left over from when saved sessions were logged in here belongs to Sessions now —
+// the saved copy is untouched, so drop the draft rather than offering to save it twice.
+if (CURRENT && CURRENT.savedId) { drop(K.current); CURRENT = null; }
 if (CURRENT && CURRENT.blocks) { render(CURRENT); setForm(false); }
 else setForm(true);
 </script>

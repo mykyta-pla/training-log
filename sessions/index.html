@@ -4,8 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sessions &middot; notaroutine</title>
-  <meta name="description" content="Sessions saved from the builder — waiting to be trained, and the ones already done.">
+  <meta name="description" content="Sessions saved from the builder — waiting to be trained, and the ones already done. Weights and reps are logged here.">
   <link rel="stylesheet" href="../style.css">
+  <script src="../movements.js"></script>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%230e0f11'/%3E%3Cpath d='M4 8h8M4 5.5h8M4 10.5h8' stroke='%237fd1c4' stroke-width='1.3'/%3E%3C/svg%3E">
 </head>
 <body>
@@ -25,8 +26,8 @@
   </header>
 
   <h1>Sessions</h1>
-  <p class="lede">Everything you&rsquo;ve built. Saved ones are waiting to be trained; the rest
-  are done, newest first.</p>
+  <p class="lede">Everything you&rsquo;ve built. Saved ones are waiting to be trained &mdash; open one
+  and log what you actually lifted. The rest are done, newest first.</p>
 
   <p class="n1">N=1, not medical advice. This is one person&rsquo;s log, tuned to one set of
   injuries and constraints. Nothing here is a recommendation.</p>
@@ -44,8 +45,10 @@
 </div>
 
 <script>
-/* Reads the same store the builder writes. Display only — editing happens in the builder. */
-const $ = s => document.querySelector(s);
+/* The builder writes plans; this page trains them. A plan arrives as plain text — movements
+   and a set-and-rep target — and the weights and reps you actually did are typed in here. */
+
+const $  = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[<>&"]/g, c =>
   ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
 const fmtDate = iso => {
@@ -53,27 +56,114 @@ const fmtDate = iso => {
   return isNaN(d) ? '—' : d.toLocaleDateString(undefined, {day:'2-digit', month:'short', year:'2-digit'});
 };
 
+/* ============================================================== storage == */
+
+const KEY = 'tl.history';
+const newId = () => 's' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+
 let SESSIONS = [];
 try {
-  const raw = localStorage.getItem('tl.history');
+  const raw = localStorage.getItem(KEY);
   SESSIONS = raw ? JSON.parse(raw) : [];
   if (!Array.isArray(SESSIONS)) SESSIONS = [];
 } catch (_) { SESSIONS = []; }
-SESSIONS = SESSIONS.map(x => ({...x, status: x.status || 'done'}));
+SESSIONS = SESSIONS.map(x => ({...x, status: x.status || 'done', id: x.id || newId()}));
+
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(SESSIONS)); } catch (_) {} };
+const doneOnly    = () => SESSIONS.filter(s => s.status === 'done');
+const plannedOnly = () => SESSIONS.filter(s => s.status === 'planned');
+const byId = id => SESSIONS.find(s => s.id === id);
+
+// Only these carry a load worth logging. Mobility, core and finishers are ticked, not weighed.
+const LOGGABLE = new Set(['hinge','squat','push','pull','acc']);
+
+// what the builder was last set to — a swap shouldn't hand you a barbell in a hotel room
+const equipLevel = () => {
+  try {
+    const p = JSON.parse(localStorage.getItem('tl.prefs') || '{}') || {};
+    return p.equip == null || isNaN(+p.equip) ? 3 : +p.equip;
+  } catch (_) { return 3; }
+};
+
+let VID = {};
+try { VID = JSON.parse(localStorage.getItem('tl.videos') || '{}') || {}; } catch (_) { VID = {}; }
+const videoFor = n => VID[n] ||
+  ('https://www.youtube.com/results?search_query=' + encodeURIComponent(n + ' exercise form'));
+
+/* ========================================================= prefilled sets == */
+
+const setLabel = st => (st && (st.kg || st.reps))
+  ? `${st.kg || '—'}${st.reps ? ' × ' + st.reps : ''}` : '';
+const setsSummary = it => Array.isArray(it.sets)
+  ? it.sets.map(setLabel).filter(Boolean).join(', ') : (it.load || '');
+
+// what you logged for this movement the last time you finished a session with it in
+function lastSets(name) {
+  for (const s of doneOnly()) {
+    for (const b of s.blocks || []) {
+      for (const it of b.items || []) {
+        if (it.name === name && Array.isArray(it.sets) && it.sets.some(x => x.kg || x.reps))
+          return it.sets;
+      }
+    }
+  }
+  return null;
+}
+
+// "3 × 6–10" and "8–12 reps" both mean: start me at 6, or at 8
+const targetReps = detail => {
+  const m = (detail || '').match(/(\d+)\s*[–—-]\s*(\d+)/);
+  return m ? m[1] : '';
+};
+const startKg = name => {
+  const v = (typeof START_KG === 'object' && START_KG) ? START_KG[name] : undefined;
+  return v == null ? '' : String(v);
+};
+
+// The boxes are never empty when they don't have to be: what you lifted last time if this
+// isn't the first time, otherwise an ordinary starting load. Both are there to be typed over.
+function seedSets(it) {
+  const m = (it.detail || '').match(/^(\d+)\s*×/);
+  const n = m ? Math.min(8, Math.max(1, +m[1])) : 3;
+  const reps = targetReps(it.detail);
+  const prev = lastSets(it.name);
+  return Array.from({length: n}, (_, i) => {
+    const p = prev && prev[i];
+    return {
+      kg:   (p && p.kg)   ? p.kg   : startKg(it.name),
+      reps: (p && p.reps) ? p.reps : reps,
+      done: false,
+      prev: setLabel(p),
+    };
+  });
+}
+
+// A plan is seeded the first time it is opened, so the numbers on screen are the numbers stored.
+function seedSession(s) {
+  let touched = false;
+  (s.blocks || []).forEach(b => (b.items || []).forEach(it => {
+    if (LOGGABLE.has(String(it.pattern || '').split('|')[0]) && !Array.isArray(it.sets)) {
+      it.sets = seedSets(it); touched = true;
+    }
+  }));
+  if (touched) save();
+  return s;
+}
+
+/* ================================================================ render == */
 
 const label = s => {
   const n = (s.blocks || []).flatMap(b => (b.items || []).map(x => x.name));
   return esc(n.slice(0, 3).join(', ') || 'session') + (n.length > 3 ? ' …' : '');
 };
+
+// read-only, for sessions already done
 const detail = s => {
   let h = '';
   (s.blocks || []).forEach(b => {
     h += `<p class="sub-note"><strong>${esc(b.title)}</strong> — ${b.mins} min</p><ul class="plain">`;
     (b.items || []).forEach(it => {
-      const sm = Array.isArray(it.sets)
-        ? it.sets.map(x => (x.kg || x.reps) ? `${x.kg || '—'}${x.reps ? ' × ' + x.reps : ''}` : '')
-                 .filter(Boolean).join(', ')
-        : (it.load || '');
+      const sm = setsSummary(it);
       h += `<li>${esc(it.name)}${it.detail ? ' — ' + esc(it.detail) : ''}` +
            `${sm ? ` <span class="prev">${esc(sm)}</span>` : ''}</li>`;
     });
@@ -82,26 +172,122 @@ const detail = s => {
   return h || '<p class="sub-note">No movements recorded.</p>';
 };
 
+// editable, for a plan you are training now
+function logBody(s) {
+  const all = (s.blocks || []).flatMap(b => b.items || []);
+  const ticked = all.filter(x => x.done).length;
+  const id = esc(s.id);
+
+  let h = `<div class="sesshead"><h3>${esc(fmtDate(s.date))} — ${s.total || '?'} min</h3>
+      <span class="prog">${ticked} of ${all.length} done</span></div>`;
+
+  // what the builder worked out when it drew this: how the time landed, what it held back
+  const slack = s.slack ?? 0;
+  const bits = [];
+  if (s.total) bits.push(`${s.planned ?? s.total} min of work in your ${s.total}`);
+  if (slack >= 3) bits.push(`about ${slack} min spare`);
+  else if (slack <= -3) bits.push(`running ${-slack} min long`);
+  if (s.depth) bits.push(s.repeated
+    ? `${s.repeated} repeat${s.repeated === 1 ? '' : 's'} from the last ${s.depth} — the pool ran out`
+    : `nothing repeated from your last ${s.depth}`);
+  if (s.excluded) bits.push(s.excluded);
+  if (bits.length) h += `<p class="sessmeta">${esc(bits.join(' · '))}</p>`;
+
+  if ((s.readiness || []).length) {
+    h += `<div class="note readiness"><p><strong>Built for that day's readiness.</strong><br>
+          ${s.readiness.map(esc).join('<br>')}</p></div>`;
+  }
+
+  (s.blocks || []).forEach((b, bi) => {
+    h += `<section class="sblk"><h3>${esc(b.title)} <span class="mins">${b.mins} min</span></h3>
+          <p class="sub-note">${esc(b.sub)}</p>`;
+    if ((b.items || []).length) {
+      h += '<ul class="exlist">';
+      b.items.forEach((it, ii) => {
+        h += `<li class="exrow${it.done ? ' done' : ''}">
+            <button type="button" class="tick${it.done ? ' on' : ''}"
+              data-id="${id}" data-b="${bi}" data-i="${ii}"
+              aria-pressed="${it.done ? 'true' : 'false'}"
+              aria-label="Mark ${esc(it.name)} done"></button>
+            <span class="ex">
+              <span class="exn">${esc(it.name)}</span>
+              <span class="exd">${esc(it.detail)}</span>
+            </span>
+            <a class="vidbtn" target="_blank" rel="noopener"
+               href="${esc(videoFor(it.name))}"
+               title="${VID[it.name] ? 'Your saved video' : 'No link saved — searches YouTube'}"
+               aria-label="Video for ${esc(it.name)}">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 7l8 5-8 5V7z" stroke-linejoin="round"/></svg>
+            </a>
+            <button type="button" class="swap" data-id="${id}" data-b="${bi}" data-i="${ii}">swap</button>
+          </li>`;
+        if (!Array.isArray(it.sets)) return;
+        h += `<li class="setwrap"><table class="sets"><thead><tr>
+                <th class="c-n">Set</th><th class="c-p">Prev</th>
+                <th class="c-i">kg</th><th class="c-i">Reps</th><th class="c-t"></th>
+              </tr></thead><tbody>`;
+        it.sets.forEach((st, si) => {
+          h += `<tr class="${st.done ? 'sdone' : ''}">
+            <td class="c-n">${si + 1}</td>
+            <td class="c-p">${esc(st.prev || '—')}</td>
+            <td class="c-i"><input class="sfield" inputmode="decimal" data-id="${id}"
+                  data-b="${bi}" data-i="${ii}" data-s="${si}" data-f="kg"
+                  value="${esc(st.kg)}" aria-label="Set ${si + 1} kg"></td>
+            <td class="c-i"><input class="sfield" inputmode="numeric" data-id="${id}"
+                  data-b="${bi}" data-i="${ii}" data-s="${si}" data-f="reps"
+                  value="${esc(st.reps)}" aria-label="Set ${si + 1} reps"></td>
+            <td class="c-t"><button type="button" class="stick${st.done ? ' on' : ''}"
+                  data-id="${id}" data-b="${bi}" data-i="${ii}" data-s="${si}"
+                  aria-pressed="${st.done ? 'true' : 'false'}"
+                  aria-label="Set ${si + 1} done"></button></td>
+          </tr>`;
+        });
+        h += `</tbody></table><p class="setbtns">
+                <button type="button" class="link addset" data-id="${id}" data-b="${bi}" data-i="${ii}">+ add set</button>
+                ${it.sets.length > 1 ? `· <button type="button" class="link delset" data-id="${id}" data-b="${bi}" data-i="${ii}">remove last</button>` : ''}
+              </p></li>`;
+      });
+      h += '</ul>';
+    }
+    h += '</section>';
+  });
+
+  if ((s.note || []).length) h += `<div class="note"><p>${s.note.map(esc).join('<br>')}</p></div>`;
+
+  h += `<div class="sessfoot">
+          <div class="row">
+            <button type="button" class="fin" data-id="${id}">Mark as done</button>
+          </div>
+          <p class="minor">Typed numbers save themselves as you go. Marking it done files it
+             below, and the builder starts steering away from these movements.</p>
+          <p class="status pstatus"></p>
+        </div>`;
+  return h;
+}
+
 function render() {
-  const planned = SESSIONS.filter(s => s.status === 'planned');
-  const done    = SESSIONS.filter(s => s.status === 'done');
+  const planned = plannedOnly(), done = doneOnly();
   const el = $('#list');
 
   if (!planned.length && !done.length) {
-    el.innerHTML = `<div class="note"><p>Nothing here yet. Build a session in the
-      <a href="../builder/">builder</a> and press <strong>Save session</strong> — it will
-      appear here, waiting for you.</p></div>`;
+    el.innerHTML = `<div class="note"><p>Nothing here yet. Set the constraints in the
+      <a href="../builder/">builder</a> and press <strong>Build and open the session</strong>
+      — it lands here, open and waiting.</p></div>`;
     return;
   }
 
   let h = '';
   if (planned.length) {
     h += `<h2>Saved and waiting</h2>
-      <p class="hint">Built, not trained yet. Open one to tick through it and log what you lifted.</p>
+      <p class="hint">Built, not trained yet. Open one to tick through it and log what you
+      lifted — the weights start at what you did last time, or at an ordinary load if this is
+      the first time.</p>
       <ul class="sessions">`;
     planned.forEach(s => {
       h += `<li><time datetime="${esc(s.date)}">${esc(fmtDate(s.date))}</time>
-              <a href="../builder/?open=${encodeURIComponent(s.id || '')}">${label(s)}</a></li>`;
+              <a href="#" class="popen" data-id="${esc(s.id)}">${label(s)}</a>
+              <button type="button" class="swap sdel" data-id="${esc(s.id)}">delete</button></li>
+            <li class="hdetail" id="p-${esc(s.id)}" hidden><div class="pbody"></div></li>`;
     });
     h += '</ul>';
   }
@@ -112,7 +298,7 @@ function render() {
       The newest are what the builder steers away from.</p><ul class="sessions">`;
     done.forEach((s, i) => {
       h += `<li><time datetime="${esc(s.date)}">${esc(fmtDate(s.date))}</time>
-              <a href="#" class="open" data-i="${i}">${label(s)}</a></li>
+              <a href="#" class="hopen" data-i="${i}">${label(s)}</a></li>
             <li class="hdetail" id="d${i}" hidden><div class="hbody"></div></li>`;
     });
     h += '</ul>';
@@ -120,17 +306,136 @@ function render() {
   el.innerHTML = h;
 }
 
-$('#list').addEventListener('click', e => {
-  const a = e.target.closest('.open');
-  if (!a) return;
-  e.preventDefault();
-  const i = +a.dataset.i, row = $('#d' + i);
-  if (!row.hidden) { row.hidden = true; return; }
-  row.querySelector('.hbody').innerHTML = detail(SESSIONS.filter(s => s.status === 'done')[i]);
+// redraw one open plan in place, leaving the rest of the page alone
+function redrawLog(id) {
+  const row = document.getElementById('p-' + id), s = byId(id);
+  if (!row || !s) return;
+  row.querySelector('.pbody').innerHTML = logBody(s);
+}
+const openLog = id => {
+  const row = document.getElementById('p-' + id);
+  if (!row) return;
+  redrawLog(id);
   row.hidden = false;
+};
+
+/* ================================================================ events == */
+
+// typing is saved as you go — no re-render, or the box you are in loses focus
+$('#list').addEventListener('input', e => {
+  const f = e.target.closest('.sfield'); if (!f) return;
+  const s = byId(f.dataset.id); if (!s) return;
+  const it = s.blocks[+f.dataset.b].items[+f.dataset.i];
+  if (!Array.isArray(it.sets)) return;
+  it.sets[+f.dataset.s][f.dataset.f] = f.value;
+  save();
 });
 
+$('#list').addEventListener('click', e => {
+  // A movement can still be traded for another — the machine is taken, the shoulder says no.
+  // Same draw the builder used, minus whatever is already in this session.
+  const swap = e.target.closest('.swap:not(.sdel)');
+  if (swap) {
+    const s = byId(swap.dataset.id); if (!s) return;
+    const b = s.blocks[+swap.dataset.b], i = +swap.dataset.i, it = b.items[i];
+    const used = new Set();
+    (s.blocks || []).forEach(bl => (bl.items || []).forEach(x => used.add(x.name)));
+    const rec = recencyMap(doneOnly(), s.depth || 0);
+    const x = pickFresh(eligible(it.pattern, equipLevel(), s.avoid || [], used), rec);
+    if (!x) {
+      const p = document.querySelector('#p-' + CSS.escape(s.id) + ' .pstatus');
+      if (p) p.textContent = 'Nothing else available for that slot.';
+      return;
+    }
+    b.items[i] = {name: x.n, pattern: it.pattern, detail: x.d || it.detail,
+                  ago: rec.has(x.n) ? rec.get(x.n) : null};
+    seedSession(s);          // a different movement gets its own numbers
+    save(); redrawLog(s.id); return;
+  }
+  const st = e.target.closest('.stick');
+  if (st) {
+    const s = byId(st.dataset.id); if (!s) return;
+    const it = s.blocks[+st.dataset.b].items[+st.dataset.i];
+    const row = it.sets[+st.dataset.s];
+    row.done = !row.done;
+    it.done = it.sets.every(x => x.done);
+    save(); redrawLog(s.id); return;
+  }
+  const add = e.target.closest('.addset');
+  if (add) {
+    const s = byId(add.dataset.id); if (!s) return;
+    const it = s.blocks[+add.dataset.b].items[+add.dataset.i];
+    const last = it.sets[it.sets.length - 1] || {};
+    it.sets.push({kg: last.kg || '', reps: last.reps || '', done: false, prev: ''});
+    it.done = false;
+    save(); redrawLog(s.id); return;
+  }
+  const del = e.target.closest('.delset');
+  if (del) {
+    const s = byId(del.dataset.id); if (!s) return;
+    const it = s.blocks[+del.dataset.b].items[+del.dataset.i];
+    if (it.sets.length > 1) it.sets.pop();
+    it.done = it.sets.every(x => x.done);
+    save(); redrawLog(s.id); return;
+  }
+  const tick = e.target.closest('.tick');
+  if (tick) {
+    const s = byId(tick.dataset.id); if (!s) return;
+    const it = s.blocks[+tick.dataset.b].items[+tick.dataset.i];
+    it.done = !it.done;
+    if (Array.isArray(it.sets)) it.sets.forEach(x => x.done = it.done);
+    save(); redrawLog(s.id); return;
+  }
+  const fin = e.target.closest('.fin');
+  if (fin) {
+    const s = byId(fin.dataset.id); if (!s) return;
+    s.status = 'done';
+    s.date = new Date().toISOString();
+    save(); render();
+    window.scrollTo({top: 0, behavior: 'smooth'});
+    return;
+  }
+  const sdel = e.target.closest('.sdel');
+  if (sdel) {
+    if (!confirm('Delete this session?')) return;
+    SESSIONS = SESSIONS.filter(x => x.id !== sdel.dataset.id);
+    save(); render(); return;
+  }
+
+  const popen = e.target.closest('.popen');
+  if (popen) {
+    e.preventDefault();
+    const row = document.getElementById('p-' + popen.dataset.id);
+    if (!row) return;
+    if (!row.hidden) { row.hidden = true; return; }
+    const s = byId(popen.dataset.id);
+    if (s) seedSession(s);
+    openLog(popen.dataset.id);
+    return;
+  }
+  const hopen = e.target.closest('.hopen');
+  if (hopen) {
+    e.preventDefault();
+    const i = +hopen.dataset.i, row = $('#d' + i);
+    if (!row.hidden) { row.hidden = true; return; }
+    row.querySelector('.hbody').innerHTML = detail(doneOnly()[i]);
+    row.hidden = false;
+  }
+});
+
+/* ================================================================== init == */
+
 render();
+// arriving from the builder's list with #<id>
+try {
+  const want = decodeURIComponent(location.hash.slice(1));
+  const s = want && byId(want);
+  if (s && s.status === 'planned') {
+    seedSession(s);
+    openLog(s.id);
+    document.getElementById('p-' + s.id).scrollIntoView({behavior:'smooth', block:'center'});
+  }
+} catch (_) {}
 </script>
 </body>
 </html>

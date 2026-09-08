@@ -102,6 +102,64 @@ const LIB = [
   {n:'Jump rope',            p:'fin', e:0, a:['jump'],         d:'5 × 1 min'},
 ];
 
+/* A starting load in kg for someone of ordinary strength, used to prefill the log on a
+   saved session so there is something to correct rather than an empty box. Nobody's real
+   numbers and not a recommendation — a neutral middle to type over. Dumbbell movements are
+   per hand. 'BW' means bodyweight. Anything missing here starts blank. */
+const START_KG = {
+  // hinge
+  'Trap-bar deadlift':60, 'Conventional deadlift':60, 'Romanian deadlift':50,
+  'Single-leg RDL':14, 'Hip thrust':50, 'Kettlebell swing':16, 'Good morning':30,
+  'Glute bridge':'BW',
+  // squat
+  'Back squat':50, 'Front squat':35, 'Goblet squat':18, 'Leg press':80,
+  'Bulgarian split squat':12, 'Walking lunge':12, 'Step-up':12, 'Bodyweight squat':'BW',
+  'Cossack squat':'BW', 'Deep ATG squat':20, 'Box jump':'BW',
+  // push
+  'Barbell bench press':45, 'Dumbbell bench press':18, 'Incline dumbbell press':14,
+  'Overhead press':30, 'Dumbbell shoulder press':12, 'Push-up':'BW', 'Loaded push-up':10,
+  'Dip':'BW', 'Cable fly':12, 'Pike push-up':'BW',
+  // pull
+  'Pull-up':'BW', 'Chin-up':'BW', 'Weighted pull-up':5, 'Lat pulldown':40, 'Barbell row':40,
+  'Dumbbell row':20, 'Cable row':40, 'Inverted row':'BW', 'Face pull':15, 'Band pull-apart':'BW',
+  // accessory
+  'Lateral raise':7, 'Biceps curl':10, 'Triceps extension':12, 'Calf raise':20, 'Rear delt fly':7,
+};
+
+/* Drawing a movement. The builder uses these to lay out a session; Sessions uses them again
+   when you swap something out mid-session. One copy, so the two can't drift apart. */
+
+const pick = a => a[Math.floor(Math.random() * a.length)];
+
+// How many sessions back each movement was last used, over the most recent `depth` of the
+// completed sessions handed in. 0 means the session before this one.
+function recencyMap(done, depth) {
+  const m = new Map();
+  if (!depth) return m;
+  (done || []).slice(0, depth).forEach((s, i) => {
+    (s.blocks || []).forEach(b => (b.items || []).forEach(it => {
+      if (!m.has(it.name)) m.set(it.name, i);
+    }));
+  });
+  return m;
+}
+
+function eligible(pattern, equip, avoid, used) {
+  const pats = String(pattern || '').split('|');
+  return LIB.filter(x => pats.includes(x.p) && x.e <= equip &&
+    !x.a.some(t => (avoid || []).includes(t)) && !used.has(x.n));
+}
+
+// Prefer movements not seen recently. Never fails while any candidate exists:
+// falls back to the least recently used rather than returning nothing.
+function pickFresh(pool, rec) {
+  if (!pool.length) return null;
+  const unseen = pool.filter(x => !rec.has(x.n));
+  if (unseen.length) return pick(unseen);
+  const maxAgo = Math.max(...pool.map(x => rec.get(x.n)));
+  return pick(pool.filter(x => rec.get(x.n) === maxAgo));
+}
+
 /* Group labels, used by the video library. */
 const GROUPS = [
   ['m_shoulder', 'Mobility · shoulders & upper back'],

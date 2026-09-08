@@ -11,9 +11,10 @@ N=1, not medical advice.
 
 ```
 index.html            home
-movements.js          the movement library, shared by builder and videos
-builder/              session builder — readiness, set logging, history
-sessions/             your saved and completed sessions
+movements.js          the movement library and starting loads, shared by
+                      builder, sessions and videos
+builder/              session builder — readiness, drawing the plan, history
+sessions/             your saved plans: trained and logged here
 videos/               one video link per movement
 training/             structure, mobility menu, variability-first programming
 nutrition/            restaurant and business-lunch playbook
@@ -25,8 +26,24 @@ style.css             the whole design system
 
 ## Adding a session
 
-Build one in `builder/` and press Save. Sessions live in the browser's local
-storage, not in this repository — there are no per-session HTML files.
+Three steps, and each page does one of them.
+
+**Build it.** Set the constraints in `builder/` and press **Build the session**. It
+draws a list of movements, each with a set-and-rep target as text — no input boxes.
+Swap anything you don't want, or draw the whole thing again. Nothing is saved yet, and
+if what you asked for doesn't fit the time it says so and draws nothing.
+
+**Save it.** **Save session** files the plan under `sessions/` and takes you to the
+list of everything you've built. The builder is empty again.
+
+**Train it.** Open a saved session from that list. Now there are fields: kg and reps
+per set, prefilled with what you lifted last time or an ordinary starting load if
+there is no last time, saved as you type. Tick sets off as you go, swap a movement if
+the machine is taken, and **Mark as done** when you're finished — that is what the
+builder steers away from next time.
+
+Sessions live in the browser's local storage, not in this repository — there are no
+per-session HTML files.
 
 ## private/
 
