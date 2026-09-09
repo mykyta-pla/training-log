@@ -148,8 +148,9 @@
     <div class="blk">
       <label class="tog"><input type="checkbox" id="b_str" checked><span>Strength</span></label>
       <div class="sub" id="s_str">
-        <p class="hint">Focus</p>
-        <div class="chips" id="strfocus">
+        <p class="hint">Focus &mdash; combine them if you want. Upper + Lower alternates
+        between the two rather than spending the session on whichever came first.</p>
+        <div class="chips multi" id="strfocus">
           <button type="button" class="chip on" data-v="full">Full body</button>
           <button type="button" class="chip" data-v="upper">Upper</button>
           <button type="button" class="chip" data-v="lower">Lower</button>
@@ -172,6 +173,15 @@
 
     <div class="blk">
       <label class="tog"><input type="checkbox" id="b_fin"><span>Finisher</span></label>
+      <div class="sub" id="s_fin">
+        <div class="chips" id="finvar">
+          <button type="button" class="chip on" data-v="one">One thing</button>
+          <button type="button" class="chip" data-v="couplet">Couplet</button>
+          <button type="button" class="chip" data-v="emom">EMOM 8</button>
+          <button type="button" class="chip" data-v="amrap">AMRAP 6</button>
+        </div>
+        <p class="hint" id="fininfo"></p>
+      </div>
     </div>
 
     <h2>Avoid</h2>
@@ -236,7 +246,35 @@ const FOCUS = {
   post:  ['hinge','pull','hinge','acc'],
 };
 
+// Each finisher option draws a different number of movements and shapes them differently.
+// The prescription on the movement itself only survives 'one' — the rest are on a clock,
+// so they write their own.
+const FIN = {
+  one:     {n:'One thing', ex:1, min:6,
+            sub:'One movement, done properly. Its own prescription, not a race.'},
+  couplet: {n:'Couplet',   ex:2, min:8,
+            sub:'Two movements back to back, 3 rounds. Rest between rounds, not inside them.',
+            d:() => '3 rounds · 40 sec'},
+  emom:    {n:'EMOM 8',    ex:2, min:8,
+            sub:'Eight minutes. Start a movement at the top of every minute and rest whatever is left of it.',
+            d:i => (i === 0 ? 'odd minutes' : 'even minutes') + ' · ~40 sec of work'},
+  amrap:   {n:'AMRAP 6',   ex:3, min:6,
+            sub:'Six minutes, as many rounds as the form holds. Stop when the reps get ugly, not when the clock does.',
+            d:() => '10 reps, or 30 sec'},
+};
+
 const REPS = {hinge:'5–8', squat:'6–10', push:'6–10', pull:'6–10', acc:'10–15'};
+
+// One focus draws its own sequence. Several draw round-robin, so Upper + Lower goes
+// push, hinge, pull, squat — four exercises give two of each instead of four of one.
+function focusSequence(keys) {
+  const seqs = (keys || []).map(k => FOCUS[k]).filter(Boolean);
+  if (!seqs.length) return FOCUS.full;
+  if (seqs.length === 1) return seqs[0];
+  const out = [], longest = Math.max(...seqs.map(x => x.length));
+  for (let i = 0; i < longest; i++) seqs.forEach(x => { if (i < x.length) out.push(x[i]); });
+  return out;
+}
 
 /* ============================================================== storage == */
 
@@ -265,13 +303,15 @@ function chipGroup(id, multi) {
     const c = e.target.closest('.chip'); if (!c) return;
     if (multi) c.classList.toggle('on');
     else { [...root.children].forEach(x => x.classList.remove('on')); c.classList.add('on'); }
-    if (id === 'carvar') showCardioInfo();
-    if (id === 'fresh')  showFreshHint();
+    if (id === 'strfocus') balanceFocus(c);
+    if (id === 'carvar')   showCardioInfo();
+    if (id === 'finvar')   showFinisherInfo();
+    if (id === 'fresh')    showFreshHint();
     savePrefs();
   });
 }
-['dur','equip','carvar','strfocus','strfmt','fresh'].forEach(id => chipGroup(id, false));
-['mobareas','avoid'].forEach(id => chipGroup(id, true));
+['dur','equip','carvar','finvar','strfmt','fresh'].forEach(id => chipGroup(id, false));
+['mobareas','avoid','strfocus'].forEach(id => chipGroup(id, true));
 
 const one  = id => document.querySelector('#' + id + ' .chip.on')?.dataset.v;
 const many = id => $$('#' + id + ' .chip.on').map(c => c.dataset.v);
@@ -279,6 +319,22 @@ const setOne  = (id, v) => { const c = document.querySelector(`#${id} .chip[data
   if (c) { $$('#'+id+' .chip').forEach(x=>x.classList.remove('on')); c.classList.add('on'); } };
 const setMany = (id, vs) => $$('#'+id+' .chip').forEach(c => c.classList.toggle('on', vs.includes(c.dataset.v)));
 
+// Full body is already everything, so it doesn't combine: picking it clears the rest,
+// picking anything else clears it, and turning the last one off falls back to it.
+function balanceFocus(clicked) {
+  const chips = $$('#strfocus .chip');
+  const full  = chips.find(c => c.dataset.v === 'full');
+  if (clicked.classList.contains('on')) {
+    if (clicked === full) chips.forEach(c => { if (c !== full) c.classList.remove('on'); });
+    else full.classList.remove('on');
+  }
+  if (!chips.some(c => c.classList.contains('on'))) full.classList.add('on');
+}
+
+function showFinisherInfo() {
+  const f = FIN[one('finvar')];
+  $('#fininfo').textContent = f ? f.sub + ' Needs about ' + f.min + ' min.' : '';
+}
 function showCardioInfo() {
   const v = CARDIO[one('carvar')];
   $('#carinfo').textContent = v ? v.how + ' Needs at least ' + v.min + ' min.' : '';
@@ -290,7 +346,7 @@ function showFreshHint() {
     : `Movements from your last ${n} completed session${n===1?'':'s'} go to the back of the queue. If a slot has nothing else left, it takes the least recent instead of failing.`;
 }
 
-[['b_mob','s_mob'],['b_car','s_car'],['b_str','s_str']].forEach(([cb, sub]) => {
+[['b_mob','s_mob'],['b_car','s_car'],['b_str','s_str'],['b_fin','s_fin']].forEach(([cb, sub]) => {
   const box = $('#'+cb), panel = $('#'+sub);
   const sync = () => { panel.classList.toggle('off', !box.checked); savePrefs(); };
   box.addEventListener('change', sync);
@@ -322,25 +378,27 @@ $('#setbar').addEventListener('keydown', e => {
 function savePrefs() {
   setBar();
   write(K.prefs, {
-    dur: one('dur'), equip: one('equip'), carvar: one('carvar'),
-    strfocus: one('strfocus'), strfmt: one('strfmt'), fresh: one('fresh'),
-    mobareas: many('mobareas'), avoid: many('avoid'),
+    dur: one('dur'), equip: one('equip'), carvar: one('carvar'), finvar: one('finvar'),
+    strfmt: one('strfmt'), fresh: one('fresh'),
+    strfocus: many('strfocus'), mobareas: many('mobareas'), avoid: many('avoid'),
     blocks: {mob:$('#b_mob').checked, car:$('#b_car').checked, str:$('#b_str').checked,
              core:$('#b_core').checked, fin:$('#b_fin').checked},
   });
 }
 function loadPrefs() {
   const p = read(K.prefs, null); if (!p) return;
-  ['dur','equip','carvar','strfocus','strfmt','fresh'].forEach(k => p[k] && setOne(k, p[k]));
+  ['dur','equip','carvar','finvar','strfmt','fresh'].forEach(k => p[k] && setOne(k, p[k]));
+  // strfocus was a single value before it could be combined
+  if (p.strfocus) setMany('strfocus', [].concat(p.strfocus));
   if (p.mobareas) setMany('mobareas', p.mobareas);
   if (p.avoid)    setMany('avoid', p.avoid);
   if (p.blocks) for (const [k, id] of Object.entries({mob:'b_mob',car:'b_car',str:'b_str',core:'b_core',fin:'b_fin'})) {
     $('#'+id).checked = !!p.blocks[k];
   }
-  [['b_mob','s_mob'],['b_car','s_car'],['b_str','s_str']].forEach(([cb,sub]) =>
+  [['b_mob','s_mob'],['b_car','s_car'],['b_str','s_str'],['b_fin','s_fin']].forEach(([cb,sub]) =>
     $('#'+sub).classList.toggle('off', !$('#'+cb).checked));
 }
-['b_core','b_fin'].forEach(id => $('#'+id).addEventListener('change', savePrefs));
+$('#b_core').addEventListener('change', savePrefs);
 
 /* ============================================================== readiness == */
 
@@ -598,8 +656,9 @@ function build() {
   if (!Object.values(want).some(Boolean)) return {error:'Pick at least one block.'};
 
   const carVar = CARDIO[one('carvar')];
+  const finVar = FIN[one('finvar')] || FIN.one;
   const mins = {mob: want.mob?6:0, car: want.car?carVar.min:0, str: want.str?12:0,
-                core: want.core?5:0, fin: want.fin?6:0};
+                core: want.core?5:0, fin: want.fin?finVar.min:0};
   const floorTotal = Object.values(mins).reduce((a,b)=>a+b,0);
 
   if (floorTotal > total) {
@@ -608,7 +667,8 @@ function build() {
     if (want.car) parts.push(carVar.n.toLowerCase() + ' ' + carVar.min);
     if (want.str) parts.push('strength 12 minimum');
     if (want.core) parts.push('core 5');
-    if (want.fin) parts.push('finisher 6');
+    if (want.fin) parts.push((finVar.ex === 1 ? 'finisher' : finVar.n.toLowerCase() + ' finisher')
+                             + ' ' + finVar.min);
     return {error:`That doesn't fit. ${parts.join(', ')} — ${floorTotal} min against the ${total} you have. `
                 + `You're ${floorTotal-total} min over. Drop a block, or give it ${floorTotal} min.`};
   }
@@ -649,7 +709,7 @@ function build() {
   if (want.str) {
     const m = time.str;
     const nEx = m < 14 ? 2 : m < 22 ? 3 : m < 32 ? 4 : 5;
-    const fmt = one('strfmt'), seq = FOCUS[one('strfocus')], items = [];
+    const fmt = one('strfmt'), seq = focusSequence(many('strfocus')), items = [];
     for (let i = 0; i < nEx; i++) {
       const it = take(seq[i % seq.length]);
       if (it) items.push(it);
@@ -679,8 +739,9 @@ function build() {
       est = items.length * sets * 3;
     }
     time.str = est;
-    S.blocks.push({key:'str', title:'Strength — ' + $('#strfocus .chip.on').textContent.toLowerCase(),
-      mins:est, sub, items});
+    const focusLabel = $$('#strfocus .chip.on').map(c => c.textContent.trim().toLowerCase())
+      .join(' + ') || 'full body';
+    S.blocks.push({key:'str', title:'Strength — ' + focusLabel, mins:est, sub, items});
   }
 
   // core
@@ -692,9 +753,17 @@ function build() {
 
   // finisher
   if (want.fin) {
-    const it = take('fin');
-    if (it) S.blocks.push({key:'fin', title:'Finisher', mins:time.fin, sub:'One thing, done properly.', items:[it]});
-    else S.note.push('Nothing available for a finisher with those settings.');
+    const items = [];
+    for (let i = 0; i < finVar.ex; i++) { const it = take('fin'); if (it) items.push(it); }
+    if (items.length) {
+      // on a clock, the movement's own prescription doesn't apply — the format writes it
+      if (finVar.d) items.forEach((it, i) => it.detail = finVar.d(i));
+      if (items.length < finVar.ex)
+        S.note.push(`Only ${items.length} finisher movement${items.length===1?'':'s'} available — `
+                  + `${finVar.n} wants ${finVar.ex}.`);
+      S.blocks.push({key:'fin', title:'Finisher' + (finVar.ex === 1 ? '' : ' — ' + finVar.n),
+                     mins:time.fin, sub:finVar.sub, items});
+    } else S.note.push('Nothing available for a finisher with those settings.');
   }
 
   S.planned = S.blocks.reduce((a,b) => a + b.mins, 0);
@@ -943,6 +1012,7 @@ $('#cfg').addEventListener('submit', e => {
 
 loadPrefs();
 showCardioInfo();
+showFinisherInfo();
 showFreshHint();
 renderSessions();
 loadReadiness();

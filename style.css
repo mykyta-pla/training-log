@@ -764,7 +764,7 @@ label.wide textarea {
   resize: vertical;
 }
 .fields input:focus, label.wide input:focus, label.wide textarea:focus,
-#r_dev:focus, #filter:focus, .vurl:focus {
+#r_dev:focus {
   outline: none; border-color: var(--ink);
 }
 #r_dev { font-family: var(--sans); font-size: 15px; }
@@ -879,19 +879,6 @@ tr.sdone .sfield { color: var(--faint); }
 .panel .row { margin-top: var(--s4); }
 .panel .row button { flex: 1 1 auto; }
 
-.vidhead { margin: 0 0 var(--s5); }
-#filter {
-  width: 100%;
-  min-height: 50px;
-  background: var(--card);
-  border: 1px solid var(--edge);
-  border-radius: var(--r-pill);
-  color: var(--ink);
-  font: 400 15px/1.4 var(--sans);
-  padding: 0 20px;
-}
-#count { font: 400 11px/1.6 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--grey); }
-
 ul.vidlist {
   list-style: none; padding: 0; margin: 0 0 var(--s5);
   background: var(--card);
@@ -914,23 +901,10 @@ ul.vidlist li.vidrow:last-child { border-bottom: 0; }
 .vidrow .vn .exd { margin-top: 1px; }
 .vidrow.has .vn { color: var(--ink); }
 .vidrow .vin { flex: 1 1 auto; display: flex; gap: var(--s2); align-items: center; }
-.vurl {
-  flex: 1 1 auto; min-width: 0;
-  min-height: var(--tap);
-  background: var(--card);
-  border: 1px solid var(--edge);
-  border-radius: var(--r-pill);
-  color: var(--ink);
-  font: 400 13px/1.4 var(--mono);
-  padding: 0 16px;
-}
-.vurl::placeholder { color: var(--faint); }
-.vidbtn.fallback { opacity: .5; }
 @media (min-width: 32rem) {
   ul.vidlist li.vidrow { flex-wrap: nowrap; }
   .vidrow .vn { flex: 1 1 auto; }
   .vidrow .vin { flex: 0 0 auto; }
-  .vurl { width: 13rem; flex: 0 0 auto; }
 }
 
 ul.plain { list-style: none; padding: 0; margin: 0 0 var(--s4); }
