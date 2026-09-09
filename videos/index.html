@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0b0c0e">
+  <meta name="theme-color" content="#f2f2f0">
   <title>Videos &middot; notaroutine</title>
-  <meta name="description" content="Your own video link for each movement — mobility, strength, core, conditioning.">
+  <meta name="description" content="Paste a link to a movement you found, say what it is, and the builder starts drawing it — yours before the defaults.">
   <link rel="stylesheet" href="../style.css">
   <script src="../movements.js"></script>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%230e0f11'/%3E%3Cpath d='M4 8h8M4 5.5h8M4 10.5h8' stroke='%23ff7a1a' stroke-width='1.3'/%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23f2f2f0'/%3E%3Cpath d='M4 8h8M4 5.5h8M4 10.5h8' stroke='%230a0a0a' stroke-width='1.3'/%3E%3C/svg%3E">
 </head>
 <body>
 <div class="wrap">
@@ -27,22 +27,83 @@
   </header>
 
   <h1>Videos</h1>
-  <p class="lede">One link per movement, from anywhere &mdash; YouTube, Instagram, TikTok, a
-  coach&rsquo;s page. Whatever you save here is what the builder&rsquo;s play button opens.
-  Movements with nothing saved fall back to a YouTube search.</p>
+  <p class="lede">See a movement worth stealing &mdash; Instagram, YouTube, a coach&rsquo;s page
+  &mdash; paste the link and say what it is. It joins the library, and the builder draws it
+  before any of the defaults.</p>
 
   <p class="n1">N=1, not medical advice. These are one person&rsquo;s references, not instruction.</p>
 
+  <h2>Add a movement</h2>
+
+  <form class="panel" id="add" autocomplete="off">
+    <label class="wide">The link
+      <!-- Deliberately not type="url": that makes the browser reject a scheme-less paste
+           like instagram.com/p/… before the form ever submits. tidy() adds the https. -->
+      <input id="a_url" type="text" inputmode="url" spellcheck="false"
+             placeholder="https://instagram.com/p/…">
+    </label>
+
+    <label class="wide">Call it
+      <input id="a_name" type="text" spellcheck="false"
+             placeholder="Half-kneeling cable row">
+    </label>
+
+    <p class="hint">What kind</p>
+    <div class="chips" id="a_type" role="group" aria-label="What kind of movement">
+      <button type="button" class="chip on" data-v="mob">Mobility</button>
+      <button type="button" class="chip" data-v="str">Strength</button>
+      <button type="button" class="chip" data-v="core">Core</button>
+      <button type="button" class="chip" data-v="fin">Finisher</button>
+    </div>
+
+    <div id="a_areawrap">
+      <p class="hint" id="a_arealabel">Where it works</p>
+      <div class="chips" id="a_area" role="group" aria-label="Which part of the body"></div>
+    </div>
+
+    <p class="hint">What it needs</p>
+    <div class="chips" id="a_equip" role="group" aria-label="Equipment needed">
+      <button type="button" class="chip" data-v="0">Bodyweight</button>
+      <button type="button" class="chip" data-v="1">Bands</button>
+      <button type="button" class="chip" data-v="2">Dumbbells</button>
+      <button type="button" class="chip on" data-v="3">Full gym</button>
+    </div>
+
+    <p class="hint">Tag it if it involves any of these, so the builder can hold it back on
+    the days you say to avoid them</p>
+    <div class="chips multi" id="a_avoid" role="group" aria-label="Avoid tags">
+      <button type="button" class="chip" data-v="deepknee">Deep knee flexion</button>
+      <button type="button" class="chip" data-v="overhead">Overhead</button>
+      <button type="button" class="chip" data-v="jump">Jumping</button>
+      <button type="button" class="chip" data-v="floor">Floor work</button>
+      <button type="button" class="chip" data-v="grip">Heavy grip</button>
+    </div>
+
+    <label class="wide">How much of it, if you know
+      <input id="a_dose" type="text" spellcheck="false" placeholder="8 each side, 45 sec…">
+    </label>
+
+    <div class="row">
+      <button type="submit" id="a_go">Add movement</button>
+    </div>
+    <p class="status" id="a_status"></p>
+  </form>
+
+  <div id="mine"></div>
+
+  <h2>The default library<span class="gcount" id="count"></span></h2>
+  <p class="hint">The movements that ship with the builder. Saving a link here doesn&rsquo;t
+  change what gets drawn &mdash; it only changes what the play button opens.</p>
+
   <div class="vidhead">
     <input id="filter" type="search" placeholder="Filter — squat, shoulder, hinge…" aria-label="Filter movements">
-    <p class="hint" id="count">&nbsp;</p>
   </div>
 
   <div id="list"></div>
 
   <hr>
-  <p class="n1">Links are stored in this browser only. They are never uploaded, nobody else can
-  see them, and they don&rsquo;t follow you to another device.</p>
+  <p class="n1">Movements and links are stored in this browser only. They are never uploaded,
+  nobody else can see them, and they don&rsquo;t follow you to another device.</p>
 
   <footer>
     <p>A personal log. Updated when something changes, not on a schedule.</p>
@@ -60,18 +121,152 @@ let VID = {};
 try { VID = JSON.parse(localStorage.getItem('tl.videos') || '{}') || {}; } catch (_) { VID = {}; }
 const saveVid = () => { try { localStorage.setItem('tl.videos', JSON.stringify(VID)); } catch (_) {} };
 
-// "Dead bug" is filed under both spine mobility and core — same movement, one link.
-const seen = new Set();
-const BY_GROUP = GROUPS.map(([key, label]) => ({
-  key, label,
-  items: LIB.filter(x => x.p === key && !seen.has(x.n) && seen.add(x.n) !== undefined),
-})).filter(g => g.items.length);
+const searchFor = n =>
+  'https://www.youtube.com/results?search_query=' + encodeURIComponent(n + ' exercise form');
 
 function tidy(u) {
   const v = (u || '').trim();
   if (!v) return '';
   return /^https?:\/\//i.test(v) ? v : 'https://' + v;
 }
+
+/* ===================================================== adding a movement == */
+
+// What kind it is, and where it works. Mobility files by area; strength files by the
+// pattern it trains, which is what the builder's slots ask for — the body parts are in
+// the label so you don't have to know the vocabulary.
+const AREAS = {
+  mob: [['m_shoulder', 'Shoulders & upper back'], ['m_hip', 'Hips'],
+        ['m_spine', 'Spine'], ['m_neck', 'Neck & traps']],
+  str: [['hinge', 'Hinge — hamstrings, glutes'], ['squat', 'Squat — quads, legs'],
+        ['push', 'Push — chest, shoulders, triceps'], ['pull', 'Pull — back, biceps'],
+        ['acc', 'Accessory — arms, calves, delts']],
+  core: [['core', '']],
+  fin:  [['fin', '']],
+};
+// A sensible prescription when you don't type one. Strength is left blank on purpose:
+// the builder writes sets and reps into that slot itself.
+const DOSE = {mob: '8 each side', core: '30–45 sec', fin: '4 × 30 sec', str: ''};
+
+const one  = id => document.querySelector('#' + id + ' .chip.on')?.dataset.v;
+const many = id => $$('#' + id + ' .chip.on').map(c => c.dataset.v);
+
+function chipGroup(id, multi) {
+  const root = document.getElementById(id);
+  root.addEventListener('click', e => {
+    const c = e.target.closest('.chip'); if (!c) return;
+    if (multi) c.classList.toggle('on');
+    else { [...root.children].forEach(x => x.classList.remove('on')); c.classList.add('on'); }
+    if (id === 'a_type') renderAreas();
+  });
+}
+['a_type', 'a_equip', 'a_area'].forEach(id => chipGroup(id, false));
+chipGroup('a_avoid', true);
+
+function renderAreas() {
+  const type = one('a_type') || 'mob';
+  const areas = AREAS[type];
+  const single = areas.length === 1;
+  $('#a_areawrap').hidden = single;
+  $('#a_area').innerHTML = single ? '' : areas.map(([v, label], i) =>
+    `<button type="button" class="chip${i === 0 ? ' on' : ''}" data-v="${v}">${esc(label)}</button>`
+  ).join('');
+}
+
+const say = (msg, bad) => {
+  const el = $('#a_status');
+  el.textContent = msg;
+  el.className = bad ? 'status err' : 'status';
+};
+
+$('#add').addEventListener('submit', e => {
+  e.preventDefault();
+  const url  = tidy($('#a_url').value);
+  const name = $('#a_name').value.trim();
+  const type = one('a_type') || 'mob';
+  const p    = AREAS[type].length === 1 ? AREAS[type][0][0] : one('a_area');
+
+  if (!url)  return say('Paste the link first — that is the point of the entry.', true);
+  if (!name) return say('Give it a name. It is what you will see mid-session.', true);
+  if (!p)    return say('Pick where it works.', true);
+  if (allMovements().some(x => x.n.toLowerCase() === name.toLowerCase()))
+    return say(`There is already a movement called “${name}”. Use another name.`, true);
+
+  const list = customMovements();
+  list.unshift({
+    n: name,
+    p,
+    e: +(one('a_equip') ?? 3),
+    a: many('a_avoid'),
+    d: $('#a_dose').value.trim() || DOSE[type],
+    url,
+    mine: true,
+    added: new Date().toISOString(),
+  });
+  if (!saveCustomMovements(list)) return say('Could not save — this browser refused storage.', true);
+
+  VID[name] = url;                    // so the play button opens it everywhere
+  saveVid();
+
+  $('#a_url').value = ''; $('#a_name').value = ''; $('#a_dose').value = '';
+  $$('#a_avoid .chip').forEach(c => c.classList.remove('on'));
+  say(`Added. The builder will draw “${name}” before the defaults.`);
+  renderMine();
+  render($('#filter').value);
+});
+
+/* ========================================================= your movements == */
+
+function renderMine() {
+  const list = customMovements();
+  const el = $('#mine');
+  if (!list.length) {
+    el.innerHTML = `<h2>Yours</h2>
+      <p class="hint">Nothing added yet. Anything you add here is drawn ahead of the
+      default library — that is the whole point of it.</p>`;
+    return;
+  }
+  let h = `<h2>Yours<span class="gcount">${list.length}</span></h2>
+    <p class="hint">Drawn before the defaults whenever one of these fits the slot.</p>
+    <ul class="vidlist">`;
+  list.forEach((x, i) => {
+    h += `<li class="vidrow has">
+      <span class="vn">${esc(x.n)}
+        <span class="exd">${esc(groupLabel(x.p))}${x.d ? ' · ' + esc(x.d) : ''}</span>
+      </span>
+      <span class="vin">
+        <a class="vidbtn" target="_blank" rel="noopener" href="${esc(x.url || searchFor(x.n))}"
+           aria-label="Open the video for ${esc(x.n)}">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 7l8 5-8 5V7z" stroke-linejoin="round"/></svg>
+        </a>
+        <button type="button" class="swap mdel" data-i="${i}"
+                aria-label="Delete ${esc(x.n)}">delete</button>
+      </span>
+    </li>`;
+  });
+  el.innerHTML = h + '</ul>';
+}
+
+$('#mine').addEventListener('click', e => {
+  const b = e.target.closest('.mdel'); if (!b) return;
+  const list = customMovements();
+  const x = list[+b.dataset.i];
+  if (!x || !confirm(`Delete “${x.n}”? The builder stops drawing it.`)) return;
+  list.splice(+b.dataset.i, 1);
+  saveCustomMovements(list);
+  delete VID[x.n]; saveVid();
+  renderMine();
+  render($('#filter').value);
+});
+
+/* ======================================================= default library == */
+
+// "Dead bug" is filed under both spine mobility and core — same movement, one link.
+const seen = new Set();
+const BY_GROUP = GROUPS.map(([key, label]) => ({
+  key, label,
+  items: LIB.filter(x => x.p === key && !seen.has(x.n) && seen.add(x.n) !== undefined),
+})).filter(g => g.items.length);
 
 function render(q = '') {
   const needle = q.trim().toLowerCase();
@@ -82,7 +277,7 @@ function render(q = '') {
       !needle || x.n.toLowerCase().includes(needle) || g.label.toLowerCase().includes(needle));
     if (!items.length) return;
     const withLinks = items.filter(x => VID[x.n]).length;
-    h += `<h2>${esc(g.label)} <span class="gcount">${withLinks}/${items.length}</span></h2>
+    h += `<h3>${esc(g.label)} <span class="gcount">${withLinks}/${items.length}</span></h3>
           <ul class="vidlist">`;
     items.forEach(x => {
       shown++;
@@ -92,13 +287,13 @@ function render(q = '') {
         <span class="vin">
           <input class="vurl" data-n="${esc(x.n)}" value="${esc(url)}"
                  placeholder="paste a link" inputmode="url" spellcheck="false">
+          <a class="vidbtn${url ? '' : ' fallback'}" target="_blank" rel="noopener"
+             href="${esc(url || searchFor(x.n))}"
+             title="${url ? 'Open your saved link' : 'No link saved — search YouTube'}"
+             aria-label="Open video for ${esc(x.n)}">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 7l8 5-8 5V7z" stroke-linejoin="round"/></svg>
+          </a>
         </span>
-        <a class="vidbtn${url ? '' : ' fallback'}" target="_blank" rel="noopener"
-           href="${esc(url || 'https://www.youtube.com/results?search_query=' + encodeURIComponent(x.n + ' exercise form'))}"
-           title="${url ? 'Open your saved link' : 'No link saved — search YouTube'}"
-           aria-label="Open video for ${esc(x.n)}">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 7l8 5-8 5V7z" stroke-linejoin="round"/></svg>
-        </a>
       </li>`;
     });
     h += '</ul>';
@@ -106,10 +301,8 @@ function render(q = '') {
 
   $('#list').innerHTML = h || '<div class="note"><p>Nothing matches that.</p></div>';
   const total = BY_GROUP.reduce((a, g) => a + g.items.length, 0);
-  const saved = Object.keys(VID).filter(k => VID[k]).length;
-  $('#count').textContent = needle
-    ? `${shown} of ${total} movements shown · ${saved} have a link saved`
-    : `${total} movements · ${saved} with a link saved`;
+  const saved = BY_GROUP.reduce((a, g) => a + g.items.filter(x => VID[x.n]).length, 0);
+  $('#count').textContent = needle ? `${shown} of ${total}` : `${saved}/${total} linked`;
 }
 
 $('#list').addEventListener('change', e => {
@@ -121,6 +314,8 @@ $('#list').addEventListener('change', e => {
 });
 $('#filter').addEventListener('input', () => render($('#filter').value));
 
+renderAreas();
+renderMine();
 render();
 </script>
 </body>
