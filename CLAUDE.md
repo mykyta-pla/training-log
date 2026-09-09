@@ -29,9 +29,11 @@ find it, but it is not built for them.
   list degrades to empty and says so; nothing else on the site
   notices. Never block rendering on a fetch.
 - The shared library stores four fields per entry and nothing else,
-  ever: movement, url, optional label, status flag. No submitter, no
-  IP, no timestamp, no user agent, no session id, no identifier of
-  any kind — nothing that could tie an entry back to a person, or
+  ever: movement, url, optional label, status flag. Plus a random
+  row id, because a report has to be able to name an entry — a
+  crypto.randomUUID, carrying no order and no origin. No submitter,
+  no IP, no timestamp, no user agent, no session id, no identifier
+  of any kind — nothing that could tie an entry back to a person, or
   two entries to each other.
 - Readiness and tracker data — recovery, HRV, resting heart rate,
   sleep, sleep performance, strain, and the free-text notes — never
