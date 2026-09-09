@@ -18,8 +18,34 @@ find it, but it is not built for them.
   https://claude.ai/code/artifact/12a4be02-eda3-4df0-98a2-0835008037f9
   — its "The system" artboard is the source of truth for colour, type,
   the dot field, 8px cards and 999px pill controls.
-- All state lives in localStorage. No backend, no accounts, no
-  cookies, no analytics, no third-party requests of any kind.
+- All state lives in localStorage. No cookies, no analytics, no
+  tracking, no third-party requests of any kind.
+- One scoped exception to "no backend", and only one: the shared
+  video library at api.notaroutine.life, a Cloudflare Worker kept in
+  worker/. Same owner, not a third party. It exists so that a
+  movement someone finds is not lost when site data is cleared.
+  Nothing else may use it without this file changing first.
+- Every page must work fully with that API unreachable. The shared
+  list degrades to empty and says so; nothing else on the site
+  notices. Never block rendering on a fetch.
+- The shared library stores four fields per entry and nothing else,
+  ever: movement, url, optional label, status flag. No submitter, no
+  IP, no timestamp, no user agent, no session id, no identifier of
+  any kind — nothing that could tie an entry back to a person, or
+  two entries to each other.
+- Readiness and tracker data — recovery, HRV, resting heart rate,
+  sleep, sleep performance, strain, and the free-text notes — never
+  leaves the device. Not in a request body, not in a synced blob,
+  not written anywhere but localStorage. This is the most important
+  rule on the page. If a feature appears to need it on a server,
+  the feature is wrong.
+- Anything ever synced is encrypted in the browser first, under a
+  key the server never sees. The server holds ciphertext it cannot
+  read, and that has to stay true even if the server is hostile.
+- No email, no username, no phone number, no password, no account
+  that identifies a person. hello@notaroutine.life is the only
+  address anywhere, and it is for reaching a human, not for signing
+  anyone up.
 - Fonts are self-hosted in fonts/ — never linked from Google Fonts or
   any other CDN. Space Grotesk for text, IBM Plex Mono for labels and
   figures, latin-subset woff2, declared with font-display: swap.
@@ -51,7 +77,11 @@ training/           structure, mobility menu, variability-first
 nutrition/          restaurant and business-lunch playbook
 supplements/        honesty audit with evidence grades
 travel/             travel-mode training and eating
+privacy/            what is stored, what is not, and how to report an entry
 private/            AES-GCM encrypted, noindex, robots-disallowed
+worker/             the api.notaroutine.life Worker — the shared video library
+                    and nothing else. Deployed by Cloudflare Workers Builds;
+                    wrangler and a package.json live here, never at the root
 style.css           the whole design system
 
 ## Before you finish
