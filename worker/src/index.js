@@ -3,7 +3,7 @@
  *
  * GET  /videos   every entry that isn't flagged, edge-cached 60 seconds
  * POST /videos   {movement, url, label?}   no auth, rate limited at the edge
- * POST /report   {id, reason}              hides an entry immediately
+ * POST /report   {id, reason}              'unsafe' hides; the rest flag
  *
  * What a row holds: a random id, a movement name, a URL, an optional label,
  * and a status. That is the whole schema and it stays that way. No submitter,
@@ -26,7 +26,15 @@ const HOSTS = ['youtube.com', 'youtu.be', 'instagram.com', 'vimeo.com', 'tiktok.
 // Reports say what is wrong from a fixed list. Free text is never stored: it
 // would be the one field on this server where a person could write anything,
 // including something about themselves.
-const REASONS = ['broken', 'wrong-movement', 'unsafe', 'spam', 'not-a-movement'];
+//
+// Two tiers, because one report hiding an entry for everybody is trivially
+// abusable. 'unsafe' hides on a single report — a false hide costs an hour of
+// somebody's attention, and the alternative is a movement that hurts people
+// staying up. The other three flag the row for review and leave it visible,
+// because a dead link is not an emergency and a spam report is the easiest
+// thing in the world to send for the wrong reason.
+const HIDES = 'unsafe';
+const REASONS = ['unsafe', 'broken', 'wrong', 'spam'];
 
 const MAX_MOVEMENT = 80;
 const MAX_LABEL = 80;
@@ -134,10 +142,13 @@ async function getVideos(request, env, ctx) {
     return out;
   }
 
+  // Everything except what an 'unsafe' report hid. A row flagged broken, wrong
+  // or spam is still served — it is marked for review, not taken down.
+  //
   // ORDER BY movement, id: alphabetical, then by a random id. Ordering by
   // anything else would leak the order things were submitted in.
   const {results} = await env.DB.prepare(
-    "SELECT id, movement, url, label FROM videos WHERE status = 'ok' ORDER BY movement, id"
+    "SELECT id, movement, url, label FROM videos WHERE status NOT LIKE 'hidden:%' ORDER BY movement, id"
   ).all();
 
   const body = JSON.stringify({videos: results || []});
@@ -199,16 +210,24 @@ async function postReport(request, env, ctx) {
   if (!reason || !REASONS.includes(reason))
     return oops('Reason must be one of: ' + REASONS.join(', ') + '.', 400, request);
 
-  // The reason rides along inside the status flag rather than in a column of
-  // its own — a fixed vocabulary, so there is nowhere for free text to land.
-  // One report hides an entry. Hiding something that turns out to be fine
-  // costs nothing; leaving something bad up costs more.
-  const res = await env.DB.prepare(
-    "UPDATE videos SET status = ? WHERE id = ? AND status = 'ok'"
-  ).bind('flagged:' + reason, id).run();
+  // The reason rides inside the status flag rather than in a column of its own
+  // — a fixed vocabulary, so there is nowhere for free text to land.
+  //
+  // 'unsafe' hides whatever the row's state was; an already-flagged row can
+  // still be hidden. The other three only mark a clean row, so a later report
+  // cannot overwrite the first reason, and cannot quietly un-hide anything.
+  const hide = reason === HIDES;
+  const res = hide
+    ? await env.DB.prepare(
+        "UPDATE videos SET status = ? WHERE id = ? AND status NOT LIKE 'hidden:%'"
+      ).bind('hidden:' + reason, id).run()
+    : await env.DB.prepare(
+        "UPDATE videos SET status = ? WHERE id = ? AND status = 'ok'"
+      ).bind('flagged:' + reason, id).run();
 
-  ctx.waitUntil(caches.default.delete(new Request(new URL(request.url).origin + '/videos')));
-  return json({ok: true, hidden: (res.meta && res.meta.changes) > 0}, 200, request);
+  const changed = (res.meta && res.meta.changes) > 0;
+  if (hide) ctx.waitUntil(caches.default.delete(new Request(new URL(request.url).origin + '/videos')));
+  return json({ok: true, hidden: hide && changed, flagged: !hide && changed}, 200, request);
 }
 
 /* ----------------------------------------------------------------- entry -- */

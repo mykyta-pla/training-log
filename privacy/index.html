@@ -76,7 +76,8 @@
     links carry identifiers like <code>igshid</code> and <code>utm_source</code>, and
     some of those name whoever copied the link.</li>
     <li><strong>Your note</strong>, if you wrote one.</li>
-    <li><strong>Whether it has been reported</strong>, from a fixed list of reasons.</li>
+    <li><strong>Whether it has been reported</strong>, and which of four reasons was
+    given. There is no free-text box anywhere in that flow.</li>
     <li><strong>A random id</strong>, so a report can say which entry it means. It is
     generated fresh and carries no order and no origin.</li>
   </ul>
@@ -109,14 +110,29 @@
 
   <h2>Reporting something in the shared library</h2>
 
-  <p>Every shared entry has a <strong>report</strong> button. Press it, pick what is
-  wrong &mdash; dead link, wrong movement, unsafe, spam, not a movement &mdash; and the
-  entry is hidden immediately, before anyone reviews it. No account, no explanation
-  needed, no free-text box: there is deliberately nowhere in that flow to type something
-  about yourself.</p>
+  <p>Every shared entry has a <strong>report</strong> button, and it asks which of four
+  things is wrong before it sends anything. No account, no explanation needed, no
+  free-text box: there is deliberately nowhere in that flow to type something about
+  yourself, or about anyone else.</p>
 
-  <p>The trade is that one press hides an entry for everybody. Something good will
-  occasionally get hidden, and that is the direction to be wrong in.</p>
+  <p>Two of those four outcomes are different, and the button says so before you press
+  it:</p>
+
+  <ul>
+    <li><strong>Unsafe &mdash; take it down now.</strong> One report hides the entry for
+    everybody, immediately, before I have looked at it. It stays hidden until I review
+    it, and I may put it back. A false hide costs somebody an hour of attention; the
+    alternative is a movement that hurts people staying up on my domain while a queue is
+    drained, and that is the worse of the two.</li>
+
+    <li><strong>Dead link, wrong movement, or spam.</strong> These mark the entry for
+    review and <em>leave it visible</em>. A broken link is not an emergency, and a spam
+    report is the easiest thing in the world to send for the wrong reason.</li>
+  </ul>
+
+  <p>The first tier is still abusable by anyone determined &mdash; there is no login to
+  stop them. The trade is deliberate, and it is narrowed to the one reason where being
+  wrong in that direction is the cheaper mistake.</p>
 
   <p>Anything else &mdash; a link that should come down, a question about this page &mdash;
   goes to <a href="mailto:hello@notaroutine.life">hello@notaroutine.life</a>. That
@@ -135,10 +151,15 @@
   <h2>What isn&rsquo;t working</h2>
 
   <ul>
-    <li><strong>One report hides an entry, and that is abusable.</strong> Anyone
-    determined enough could hide the whole library. There is no moderation queue and no
-    way to appeal except email. If it becomes a problem the fix is a review step, not a
-    login.</li>
+    <li><strong>One unsafe report still hides an entry, and that is abusable.</strong>
+    Anyone determined enough could hide the whole library one entry at a time. Splitting
+    reports into two tiers narrowed the blast radius; it did not close it. There is no
+    moderation queue and no way to appeal except email. If it becomes a problem the fix
+    is a review step, not a login.</li>
+
+    <li><strong>Reviewing reports is a person running a database query.</strong> There
+    is no admin screen and no notification. Something reported on a Friday may sit
+    hidden until someone thinks to look.</li>
 
     <li><strong>Local-only storage loses things.</strong> People clear site data by
     accident, phones get replaced, and a browser can evict local storage under pressure.

@@ -15,10 +15,59 @@ only dependency.
 | `POST /videos` | `{movement, url, label?}` | no auth, rate limited |
 | `POST /report` | `{id, reason}` | hides the entry immediately |
 
-`reason` is one of `broken`, `wrong-movement`, `unsafe`, `spam`,
-`not-a-movement`. Anything else is a 400. Links must point at youtube.com,
-youtu.be, instagram.com, vimeo.com or tiktok.com — exact host or a subdomain
-of it, so `m.youtube.com` passes and `youtube.com.example.net` does not.
+`reason` is one of `unsafe`, `broken`, `wrong`, `spam`. Anything else is a 400.
+Links must point at youtube.com, youtu.be, instagram.com, vimeo.com or
+tiktok.com — exact host or a subdomain of it, so `m.youtube.com` passes and
+`youtube.com.example.net` does not.
+
+## Reports have two tiers
+
+| reason | status becomes | still served? |
+|---|---|---|
+| `unsafe` | `hidden:unsafe` | **no** — one report is enough |
+| `broken` | `flagged:broken` | yes |
+| `wrong` | `flagged:wrong` | yes |
+| `spam` | `flagged:spam` | yes |
+
+One report hiding an entry for everybody is trivially abusable, so only the
+one reason where a false hide is cheaper than a false leave-up does it. A
+false hide costs an hour of attention; the alternative is a movement that
+hurts somebody staying up while a queue is drained.
+
+`unsafe` overrides whatever the row's state was. The other three only mark a
+clean row, so a later report cannot overwrite the first reason and nothing can
+flag an entry back into view.
+
+## Reviewing what has been reported
+
+There is no admin UI on purpose. These are the queries.
+
+Everything reported, hidden first:
+
+```sh
+npx wrangler d1 execute notaroutine-videos --remote --command \
+  "SELECT status, id, movement, label, url FROM videos WHERE status <> 'ok' ORDER BY status, movement"
+```
+
+Only what is hidden and waiting on you:
+
+```sh
+npx wrangler d1 execute notaroutine-videos --remote --command \
+  "SELECT id, movement, label, url FROM videos WHERE status LIKE 'hidden:%' ORDER BY movement"
+```
+
+Put one back, or take it down for good:
+
+```sh
+npx wrangler d1 execute notaroutine-videos --remote --command \
+  "UPDATE videos SET status = 'ok' WHERE id = 'THE-ID'"
+
+npx wrangler d1 execute notaroutine-videos --remote --command \
+  "DELETE FROM videos WHERE id = 'THE-ID'"
+```
+
+Either write changes what `GET /videos` returns, but the edge cache holds the
+old list for up to 60 seconds.
 
 CORS answers `https://notaroutine.life` and nothing else.
 

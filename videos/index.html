@@ -97,7 +97,8 @@
   <h2>Shared<span class="gcount" id="scount"></span></h2>
   <p class="hint">Links other people have added, for the movements the builder already
   knows. Nothing here touches your session, and nothing here is drawn into a plan &mdash;
-  it is a shelf of references, not a library of yours.</p>
+  it is a shelf of references, not a library of yours. Anything unsafe can be taken down
+  by anyone, from the entry itself.</p>
 
   <form class="panel" id="share" autocomplete="off">
     <label class="wide">Which movement
@@ -126,7 +127,8 @@
   <p class="n1">Your movements and their links are stored in this browser only &mdash; never
   uploaded, nobody else can see them, and they don&rsquo;t follow you to another device.
   What you post to the shared library is public and is stored with no idea of who sent
-  it: the movement, the link, your note, and whether it has been reported.
+  it: the movement, the link, your note, and whether it has been reported. Reporting it
+  as unsafe hides it for everyone at once; the other reasons mark it and leave it up.
   <a href="../privacy/">What is kept, and what isn&rsquo;t.</a></p>
 
   <footer>
@@ -286,8 +288,15 @@ $('#mine').addEventListener('click', e => {
 /* ========================================================= shared library == */
 
 const API = 'https://api.notaroutine.life';
-const REASONS = [['broken', 'Link is dead'], ['wrong-movement', 'Wrong movement'],
-                 ['unsafe', 'Unsafe'], ['spam', 'Spam'], ['not-a-movement', 'Not a movement']];
+// Two tiers, and the control says which is which before you press it. Unsafe
+// takes the entry down on this one report; the rest mark it for review and
+// leave it up, because a dead link is not an emergency.
+const REASONS = [
+  ['unsafe', 'Unsafe \u2014 take it down now'],
+  ['broken', 'The link is dead'],
+  ['wrong',  'Wrong movement'],
+  ['spam',   'Spam'],
+];
 
 // The Worker checks this list before it stores anything. Checking it again here is
 // not distrust of the Worker — it is that this page puts the value in an href, and a
@@ -381,10 +390,12 @@ function renderShared(down) {
                   aria-label="Report ${esc(v.movement)}">report</button>
         </span>
         <span class="why" hidden>
-          <span class="hint">What is wrong with it?</span>
+          <span class="hint">What is wrong with it? The first one hides the entry for
+          everyone straight away, pending review. The other three mark it and leave it
+          up.</span>
           <span class="chips multi">
             ${REASONS.map(([v2, label]) =>
-              `<button type="button" class="chip why-go" data-r="${v2}">${esc(label)}</button>`).join('')}
+              `<button type="button" class="chip why-go${v2 === 'unsafe' ? ' danger' : ''}" data-r="${v2}">${esc(label)}</button>`).join('')}
           </span>
         </span>
       </li>`).join('');
@@ -448,8 +459,17 @@ $('#shared').addEventListener('click', async e => {
       body: JSON.stringify({id, reason: go.dataset.r}),
     });
     if (!res.ok) throw new Error(res.status);
-    REPORTED.add(id);                     // gone from this page immediately, not on a refresh
-    renderShared(false);
+    const out = await res.json().catch(() => ({}));
+    if (out.hidden) {
+      REPORTED.add(id);                   // gone from this page now, not on a refresh
+      renderShared(false);
+      return;
+    }
+    // Flagged, not hidden: the entry stays where it is and says what happened to it.
+    row.querySelector('.why .chips').remove();
+    row.querySelector('.why .hint').textContent = out.flagged
+      ? 'Marked for review. It stays up until it has been looked at.'
+      : 'Already marked \u2014 somebody got here first.';
   } catch (_) {
     row.querySelectorAll('.why-go').forEach(b => b.disabled = false);
     row.querySelector('.why .hint').textContent = 'Could not send that report. Try again later.';

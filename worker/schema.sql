@@ -11,10 +11,13 @@ CREATE TABLE IF NOT EXISTS videos (
   movement TEXT NOT NULL,             -- the movement it demonstrates
   url      TEXT NOT NULL,             -- allowlisted host, query stripped
   label    TEXT,                      -- optional, 80 chars, e.g. "the cue at 0:14"
-  status   TEXT NOT NULL DEFAULT 'ok' -- 'ok', or 'flagged:<reason>' from a fixed list
+  -- 'ok'                clean
+  -- 'flagged:<reason>'   reported broken, wrong or spam — still served
+  -- 'hidden:unsafe'      reported unsafe — not served, waiting on review
+  status   TEXT NOT NULL DEFAULT 'ok'
 );
 
--- GET /videos is WHERE status = 'ok' ORDER BY movement, id.
+-- GET /videos is WHERE status NOT LIKE 'hidden:%' ORDER BY movement, id.
 CREATE INDEX IF NOT EXISTS videos_status_movement ON videos (status, movement);
 
 -- The same link for the same movement is stored once.

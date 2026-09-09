@@ -908,6 +908,11 @@ ul.vidlist li.vidrow:last-child { border-bottom: 0; }
 .vidrow .why .chips { margin: 0; }
 .vidrow .why .chip { min-height: var(--tap); font-size: 13px; }
 .vidrow .why .chip[disabled] { opacity: .45; }
+/* The one report that takes an entry down carries the signal colour, because it
+   is the only control here that changes what everybody else sees. */
+.vidrow .why .chip.danger { border-color: var(--signal); color: var(--signal); }
+.vidrow .why .chip.danger.on,
+.vidrow .why .chip.danger:hover { background: var(--signal); border-color: var(--signal); color: var(--paper); }
 @media (min-width: 32rem) {
   ul.vidlist li.vidrow { flex-wrap: nowrap; }
   .vidrow .vn { flex: 1 1 auto; }

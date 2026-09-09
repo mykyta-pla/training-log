@@ -29,7 +29,7 @@ function fakeDb(rows = []) {
     const run = () => {
       db.queries.push({sql, args});
       if (/^SELECT id, movement/.test(sql))
-        return {results: db.rows.filter(r => r.status === 'ok')
+        return {results: db.rows.filter(r => !r.status.startsWith('hidden:'))
           .sort((a, b) => a.movement.localeCompare(b.movement) || a.id.localeCompare(b.id))
           .map(({id, movement, url, label}) => ({id, movement, url, label}))};
       if (/^SELECT id FROM videos WHERE movement/.test(sql))
@@ -39,7 +39,9 @@ function fakeDb(rows = []) {
         return {meta: {changes: 1}};
       }
       if (/^UPDATE/.test(sql)) {
-        const row = db.rows.find(r => r.id === args[1] && r.status === 'ok');
+        const clean = /status = 'ok'$/.test(sql);
+        const row = db.rows.find(r => r.id === args[1] &&
+          (clean ? r.status === 'ok' : !r.status.startsWith('hidden:')));
         if (row) row.status = args[0];
         return {meta: {changes: row ? 1 : 0}};
       }
@@ -73,16 +75,17 @@ const fresh = rows => { globalThis.caches.default._m.clear(); return {DB: fakeDb
 
 /* ----------------------------------------------------------- the tests -- */
 
-test('GET /videos returns only what is not flagged', async () => {
+test('GET /videos serves the flagged and withholds the hidden', async () => {
   const env = fresh([
     {id: 'b', movement: 'Goblet squat', url: 'https://youtu.be/aaa', label: null, status: 'ok'},
     {id: 'a', movement: 'Barbell row',  url: 'https://youtu.be/bbb', label: 'cue at 0:14', status: 'ok'},
     {id: 'c', movement: 'Barbell row',  url: 'https://youtu.be/ccc', label: null, status: 'flagged:spam'},
+    {id: 'd', movement: 'Barbell row',  url: 'https://youtu.be/ddd', label: null, status: 'hidden:unsafe'},
   ]);
   const res = await call('GET', '/videos', {env});
   const {videos} = await res.json();
   assert.equal(res.status, 200);
-  assert.deepEqual(videos.map(v => v.id), ['a', 'b']);
+  assert.deepEqual(videos.map(v => v.id), ['a', 'c', 'b']);
   assert.equal(res.headers.get('Cache-Control'), 'public, max-age=60');
   assert.deepEqual(Object.keys(videos[0]).sort(), ['id', 'label', 'movement', 'url']);
 });
@@ -175,19 +178,48 @@ test('the same link for the same movement is stored once', async () => {
   assert.equal(env.DB.rows.length, 1);
 });
 
-test('POST /report hides the entry and takes only known reasons', async () => {
+test('POST /report takes only the four known reasons', async () => {
   const env = fresh([{id: 'a', movement: 'Row', url: 'https://youtu.be/a', label: null, status: 'ok'}]);
-  const bad = await call('POST', '/report', {env, body: {id: 'a', reason: 'i just do not like it'}});
-  assert.equal(bad.status, 400);
-  assert.equal(env.DB.rows[0].status, 'ok');
+  for (const reason of ['i just do not like it', 'not-a-movement', 'wrong-movement', '', 'UNSAFE']) {
+    const bad = await call('POST', '/report', {env, body: {id: 'a', reason}});
+    assert.equal(bad.status, 400, JSON.stringify(reason) + ' should be refused');
+    assert.equal(env.DB.rows[0].status, 'ok');
+  }
+});
 
-  const ok = await call('POST', '/report', {env, body: {id: 'a', reason: 'unsafe'}});
-  assert.equal(ok.status, 200);
-  assert.equal((await ok.json()).hidden, true);
-  assert.equal(env.DB.rows[0].status, 'flagged:unsafe');
+test('unsafe hides on one report', async () => {
+  const env = fresh([{id: 'a', movement: 'Row', url: 'https://youtu.be/a', label: null, status: 'ok'}]);
+  const res = await call('POST', '/report', {env, body: {id: 'a', reason: 'unsafe'}});
+  assert.deepEqual(await res.json(), {ok: true, hidden: true, flagged: false});
+  assert.equal(env.DB.rows[0].status, 'hidden:unsafe');
+  assert.deepEqual((await (await call('GET', '/videos', {env})).json()).videos, []);
+});
 
-  const gone = await call('GET', '/videos', {env});
-  assert.deepEqual((await gone.json()).videos, []);
+test('broken, wrong and spam flag the row and leave it visible', async () => {
+  for (const reason of ['broken', 'wrong', 'spam']) {
+    const env = fresh([{id: 'a', movement: 'Row', url: 'https://youtu.be/a', label: null, status: 'ok'}]);
+    const res = await call('POST', '/report', {env, body: {id: 'a', reason}});
+    assert.deepEqual(await res.json(), {ok: true, hidden: false, flagged: true});
+    assert.equal(env.DB.rows[0].status, 'flagged:' + reason);
+    const {videos} = await (await call('GET', '/videos', {env})).json();
+    assert.deepEqual(videos.map(v => v.id), ['a'], reason + ' must not take the entry down');
+  }
+});
+
+test('a second report cannot overwrite the first reason, and unsafe still wins', async () => {
+  const env = fresh([{id: 'a', movement: 'Row', url: 'https://youtu.be/a', label: null, status: 'ok'}]);
+  await call('POST', '/report', {env, body: {id: 'a', reason: 'broken'}});
+  const second = await call('POST', '/report', {env, body: {id: 'a', reason: 'spam'}});
+  assert.equal((await second.json()).flagged, false);
+  assert.equal(env.DB.rows[0].status, 'flagged:broken');
+
+  const unsafe = await call('POST', '/report', {env, body: {id: 'a', reason: 'unsafe'}});
+  assert.equal((await unsafe.json()).hidden, true);
+  assert.equal(env.DB.rows[0].status, 'hidden:unsafe');
+
+  // and nothing can flag it back into view
+  await call('POST', '/report', {env, body: {id: 'a', reason: 'broken'}});
+  assert.equal(env.DB.rows[0].status, 'hidden:unsafe');
 });
 
 test('a report writes no free text anywhere', async () => {
