@@ -740,7 +740,7 @@ button.link:hover { color: var(--signal); }
   color: var(--grey);
 }
 label.wide { margin-bottom: var(--s4); }
-.fields input, #r_dev {
+.fields input, label.wide input, #r_dev {
   display: block; width: 100%; margin-top: var(--s2);
   min-height: var(--tap);
   background: var(--card);
@@ -763,7 +763,8 @@ label.wide textarea {
   text-transform: none; letter-spacing: 0;
   resize: vertical;
 }
-.fields input:focus, label.wide textarea:focus, #r_dev:focus, #filter:focus, .vurl:focus {
+.fields input:focus, label.wide input:focus, label.wide textarea:focus,
+#r_dev:focus, #filter:focus, .vurl:focus {
   outline: none; border-color: var(--ink);
 }
 #r_dev { font-family: var(--sans); font-size: 15px; }
@@ -864,6 +865,20 @@ tr.sdone .sfield { color: var(--faint); }
 
 /* ---------- video library ---------- */
 
+/* A form that reads as one card, like everything else on paper. */
+.panel {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: 16px 16px 18px;
+  margin: 0 0 var(--s5);
+}
+.panel .chips { margin-bottom: var(--s4); }
+.panel .hint { margin-top: var(--s4); }
+.panel > label.wide:first-child { margin-top: 0; }
+.panel .row { margin-top: var(--s4); }
+.panel .row button { flex: 1 1 auto; }
+
 .vidhead { margin: 0 0 var(--s5); }
 #filter {
   width: 100%;
@@ -895,6 +910,8 @@ ul.vidlist li.vidrow:last-child { border-bottom: 0; }
   flex: 1 1 100%; min-width: 0;
   font-weight: 600; font-size: 15.5px; letter-spacing: -.015em; color: var(--ink);
 }
+/* A movement of yours carries its group and dose under the name. */
+.vidrow .vn .exd { margin-top: 1px; }
 .vidrow.has .vn { color: var(--ink); }
 .vidrow .vin { flex: 1 1 auto; display: flex; gap: var(--s2); align-items: center; }
 .vurl {

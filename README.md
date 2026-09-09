@@ -15,7 +15,8 @@ movements.js          the movement library and starting loads, shared by
                       builder, sessions and videos
 builder/              session builder — readiness, drawing the plan, history
 sessions/             your saved plans: trained and logged here
-videos/               one video link per movement
+videos/               paste a link and tag it: your own movements,
+                      drawn before the defaults
 training/             structure, mobility menu, variability-first programming
 nutrition/            restaurant and business-lunch playbook
 supplements/          thinking + honesty audit, with evidence grades

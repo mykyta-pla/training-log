@@ -41,11 +41,12 @@ no hype, no protocol-selling, no motivational language.
 index.html          home
 .nojekyll           stops Pages running Jekyll over the repo
 fonts/              self-hosted woff2 + OFL licences
-movements.js        movement library and starting loads — shared by builder,
-                    sessions and videos
+movements.js        movement library, starting loads, and the movements you added
+                    yourself — shared by builder, sessions and videos
 builder/            session builder: readiness, drawing the plan, history
 sessions/           saved plans, trained and logged here — weights and reps
-videos/             one video link per movement
+videos/             paste a link, tag it, and it joins the library — your
+                    movements are drawn before the defaults (tl.custom)
 training/           structure, mobility menu, variability-first
 nutrition/          restaurant and business-lunch playbook
 supplements/        honesty audit with evidence grades

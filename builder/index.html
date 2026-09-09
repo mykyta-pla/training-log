@@ -565,7 +565,7 @@ function briefForClaude() {
     L.push('Please do not repeat movements from the most recent one or two sessions.');
     L.push('');
   }
-  const pool = LIB.filter(x => x.e <= equip && !x.a.some(t => avoid.includes(t)));
+  const pool = allMovements().filter(x => x.e <= equip && !x.a.some(t => avoid.includes(t)));
   const groups = {hinge:'Hinge', squat:'Squat', push:'Push', pull:'Pull', acc:'Accessory',
                   core:'Core', fin:'Finisher', m_shoulder:'Mobility — shoulders',
                   m_hip:'Mobility — hips', m_spine:'Mobility — spine', m_neck:'Mobility — neck'};
@@ -703,7 +703,7 @@ function build() {
 
   if (avoid.length) {
     const labels = $$('#avoid .chip.on').map(c => c.textContent.trim().toLowerCase());
-    const n = LIB.filter(x => x.a.some(t => avoid.includes(t))).length;
+    const n = allMovements().filter(x => x.a.some(t => avoid.includes(t))).length;
     S.excluded = `${n} movement${n===1?'':'s'} held back — ${labels.join(', ')}.`;
   }
   return S;

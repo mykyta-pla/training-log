@@ -223,6 +223,33 @@ function trackerSessionPrompt(S, done) {
   return L.join('\n');
 }
 
+/* Movements you added yourself, from a video you found somewhere. Same shape as the library
+   above — name, pattern, equipment level, avoid tags, prescription — plus the link it came
+   from and a flag. Stored in this browser, never uploaded, and drawn FIRST: a movement you
+   went looking for beats one of the defaults. */
+
+const CUSTOM_KEY = 'tl.custom';
+
+function customMovements() {
+  try {
+    const v = JSON.parse(localStorage.getItem(CUSTOM_KEY) || '[]');
+    return Array.isArray(v)
+      ? v.filter(x => x && x.n && x.p).map(x => ({...x, a: x.a || [], e: +x.e || 0, mine: true}))
+      : [];
+  } catch (_) { return []; }
+}
+
+function saveCustomMovements(list) {
+  try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(list)); return true; }
+  catch (_) { return false; }
+}
+
+// The library the builder actually draws from: the defaults, plus yours.
+const allMovements = () => LIB.concat(customMovements());
+
+// "Strength · pull — back, biceps" for a pattern key, for labelling a movement anywhere.
+const groupLabel = p => (GROUPS.find(g => g[0] === p) || [null, p])[1];
+
 /* Drawing a movement. The builder uses these to lay out a session; Sessions uses them again
    when you swap something out mid-session. One copy, so the two can't drift apart. */
 
@@ -243,18 +270,25 @@ function recencyMap(done, depth) {
 
 function eligible(pattern, equip, avoid, used) {
   const pats = String(pattern || '').split('|');
-  return LIB.filter(x => pats.includes(x.p) && x.e <= equip &&
+  return allMovements().filter(x => pats.includes(x.p) && x.e <= equip &&
     !x.a.some(t => (avoid || []).includes(t)) && !used.has(x.n));
 }
 
 // Prefer movements not seen recently. Never fails while any candidate exists:
 // falls back to the least recently used rather than returning nothing.
+//
+// Yours come first, always: if any movement you added fits this slot, the draw happens
+// among those alone and the defaults are not consulted. Freshness then decides between
+// them. With only one or two of yours for a pattern that means they will repeat — which
+// is what "first priority" costs, and the Repeats setting is still there to see it.
 function pickFresh(pool, rec) {
   if (!pool.length) return null;
-  const unseen = pool.filter(x => !rec.has(x.n));
+  const mine = pool.filter(x => x.mine);
+  const from = mine.length ? mine : pool;
+  const unseen = from.filter(x => !rec.has(x.n));
   if (unseen.length) return pick(unseen);
-  const maxAgo = Math.max(...pool.map(x => rec.get(x.n)));
-  return pick(pool.filter(x => rec.get(x.n) === maxAgo));
+  const maxAgo = Math.max(...from.map(x => rec.get(x.n)));
+  return pick(from.filter(x => rec.get(x.n) === maxAgo));
 }
 
 /* Group labels, used by the video library. */
