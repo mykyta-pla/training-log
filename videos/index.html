@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f2f2f0">
   <title>Videos &middot; notaroutine</title>
-  <meta name="description" content="Paste a link to a movement you found, say what it is, and the builder starts drawing it — yours before the defaults.">
+  <meta name="description" content="Paste a link to a movement you found, say what it is, and the builder starts drawing it — yours before the defaults. Plus a shared library anyone can add to.">
   <link rel="stylesheet" href="../style.css">
   <script src="../movements.js"></script>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23f2f2f0'/%3E%3Cpath d='M4 8h8M4 5.5h8M4 10.5h8' stroke='%230a0a0a' stroke-width='1.3'/%3E%3C/svg%3E">
@@ -28,8 +28,9 @@
 
   <h1>Videos</h1>
   <p class="lede">See a movement worth stealing &mdash; Instagram, YouTube, a coach&rsquo;s page
-  &mdash; paste the link and say what it is. It joins the library, and the builder draws it
-  before any of the defaults.</p>
+  &mdash; paste the link and say what it is. It joins your library, and the builder draws it
+  before any of the defaults. Below that, a shared library: links anyone can add, and
+  anyone can report.</p>
 
   <p class="n1">N=1, not medical advice. These are one person&rsquo;s references, not instruction.</p>
 
@@ -92,11 +93,46 @@
   <div id="mine"></div>
 
   <hr>
-  <p class="n1">Movements and links are stored in this browser only. They are never uploaded,
-  nobody else can see them, and they don&rsquo;t follow you to another device.</p>
+
+  <h2>Shared<span class="gcount" id="scount"></span></h2>
+  <p class="hint">Links other people have added, for the movements the builder already
+  knows. Nothing here touches your session, and nothing here is drawn into a plan &mdash;
+  it is a shelf of references, not a library of yours.</p>
+
+  <form class="panel" id="share" autocomplete="off">
+    <label class="wide">Which movement
+      <select id="s_move"></select>
+    </label>
+    <label class="wide">The link
+      <input id="s_url" type="text" inputmode="url" spellcheck="false"
+             placeholder="https://youtube.com/watch?v=…">
+    </label>
+    <label class="wide">A note, if it needs one
+      <input id="s_label" type="text" maxlength="80" spellcheck="false"
+             placeholder="the cue at 0:14">
+    </label>
+    <p class="hint">YouTube, Instagram, Vimeo and TikTok links. Everything after the
+    address is stripped before it is stored &mdash; share links carry tracking that names
+    whoever copied them.</p>
+    <div class="row">
+      <button type="submit" id="s_go">Share it</button>
+    </div>
+    <p class="status" id="s_status"></p>
+  </form>
+
+  <div id="shared"><p class="hint" id="sload">Loading the shared library&hellip;</p></div>
+
+  <hr>
+  <p class="n1">Your movements and their links are stored in this browser only &mdash; never
+  uploaded, nobody else can see them, and they don&rsquo;t follow you to another device.
+  What you post to the shared library is public and is stored with no idea of who sent
+  it: the movement, the link, your note, and whether it has been reported.
+  <a href="../privacy/">What is kept, and what isn&rsquo;t.</a></p>
 
   <footer>
     <p>A personal log. Updated when something changes, not on a schedule.</p>
+    <p class="fmeta"><a href="../privacy/">Privacy</a> &middot;
+       <a href="mailto:hello@notaroutine.life">hello@notaroutine.life</a></p>
   </footer>
 
 </div>
@@ -247,8 +283,183 @@ $('#mine').addEventListener('click', e => {
   renderMine();
 });
 
+/* ========================================================= shared library == */
+
+const API = 'https://api.notaroutine.life';
+const REASONS = [['broken', 'Link is dead'], ['wrong-movement', 'Wrong movement'],
+                 ['unsafe', 'Unsafe'], ['spam', 'Spam'], ['not-a-movement', 'Not a movement']];
+
+// The Worker checks this list before it stores anything. Checking it again here is
+// not distrust of the Worker — it is that this page puts the value in an href, and a
+// page should never hand a link to the browser on somebody else's word.
+const HOSTS = ['youtube.com', 'youtu.be', 'instagram.com', 'vimeo.com', 'tiktok.com'];
+function allowed(raw) {
+  let u; try { u = new URL(raw); } catch (_) { return null; }
+  if (u.protocol !== 'https:' && u.protocol !== 'http:') return null;
+  const h = u.hostname.toLowerCase().replace(/^www\./, '');
+  return HOSTS.some(x => h === x || h.endsWith('.' + x)) ? u.toString() : null;
+}
+
+// Which group a movement belongs in, for the headings. Anything the library doesn't
+// know — somebody else's own movement — files at the end rather than disappearing.
+const PATTERN_OF = new Map(LIB.map(x => [x.n, x.p]));
+const OTHER = '_other';
+
+let SHARED = null;          // null: not loaded yet. [] : loaded and empty, or unreachable.
+let REPORTED = new Set();
+
+function fillPicker() {
+  const mine = customMovements();
+  const groups = GROUPS.map(([key, label]) => [label, LIB.filter(x => x.p === key).map(x => x.n)])
+    .filter(([, ns]) => ns.length);
+  if (mine.length) groups.unshift(['Yours', mine.map(x => x.n)]);
+  const seen = new Set();
+  $('#s_move').innerHTML = groups.map(([label, names]) => {
+    const opts = names.filter(n => !seen.has(n) && seen.add(n) !== undefined)
+      .map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+    return opts ? `<optgroup label="${esc(label)}">${opts}</optgroup>` : '';
+  }).join('');
+}
+
+// Rendering never waits on the network: the page is complete before this runs, and
+// complete again whichever way it ends.
+async function loadShared() {
+  try {
+    const res = await fetch(API + '/videos', {headers: {'Accept': 'application/json'}});
+    if (!res.ok) throw new Error(res.status);
+    const data = await res.json();
+    SHARED = (Array.isArray(data.videos) ? data.videos : [])
+      .map(v => ({...v, url: allowed(v.url)}))
+      .filter(v => v.url && v.movement);
+  } catch (_) {
+    SHARED = [];
+    renderShared(true);
+    return;
+  }
+  renderShared(false);
+}
+
+function renderShared(down) {
+  const el = $('#shared');
+  const list = (SHARED || []).filter(v => !REPORTED.has(v.id));
+  $('#scount').textContent = list.length || '';
+
+  if (down) {
+    el.innerHTML = `<div class="note"><p><strong>The shared library isn\u2019t reachable.</strong><br>
+      Everything else on this page works as it always does &mdash; your own movements are
+      here, and the builder draws them. Try again later.</p></div>`;
+    return;
+  }
+  if (!list.length) {
+    el.innerHTML = `<p class="hint">Nothing shared yet. The form above is how the first
+      one gets here.</p>`;
+    return;
+  }
+
+  const byPattern = new Map();
+  list.forEach(v => {
+    const p = PATTERN_OF.get(v.movement) || OTHER;
+    if (!byPattern.has(p)) byPattern.set(p, []);
+    byPattern.get(p).push(v);
+  });
+
+  const order = GROUPS.map(g => g[0]).filter(p => byPattern.has(p));
+  if (byPattern.has(OTHER)) order.push(OTHER);
+
+  el.innerHTML = order.map(p => {
+    const rows = byPattern.get(p).map(v => `
+      <li class="vidrow has" data-id="${esc(v.id)}">
+        <span class="vn">${esc(v.movement)}
+          ${v.label ? `<span class="exd">${esc(v.label)}</span>` : ''}
+        </span>
+        <span class="vin">
+          <a class="vidbtn" target="_blank" rel="noopener noreferrer" href="${esc(v.url)}"
+             aria-label="Open the shared video for ${esc(v.movement)}">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 7l8 5-8 5V7z" stroke-linejoin="round"/></svg>
+          </a>
+          <button type="button" class="swap rep" data-id="${esc(v.id)}"
+                  aria-label="Report ${esc(v.movement)}">report</button>
+        </span>
+        <span class="why" hidden>
+          <span class="hint">What is wrong with it?</span>
+          <span class="chips multi">
+            ${REASONS.map(([v2, label]) =>
+              `<button type="button" class="chip why-go" data-r="${v2}">${esc(label)}</button>`).join('')}
+          </span>
+        </span>
+      </li>`).join('');
+    const label = p === OTHER ? 'Movements the builder doesn\u2019t know' : groupLabel(p);
+    return `<h3>${esc(label)}</h3><ul class="vidlist">${rows}</ul>`;
+  }).join('');
+}
+
+const stell = (msg, bad) => {
+  const el = $('#s_status');
+  el.textContent = msg;
+  el.className = bad ? 'status err' : 'status';
+};
+
+$('#share').addEventListener('submit', async e => {
+  e.preventDefault();
+  const movement = $('#s_move').value;
+  const url = tidy($('#s_url').value);
+  const label = $('#s_label').value.trim();
+  if (!movement) return stell('Pick the movement it shows.', true);
+  if (!url) return stell('Paste the link first.', true);
+  if (!allowed(url)) return stell(
+    'That link is not somewhere the shared library takes: YouTube, Instagram, Vimeo or TikTok.', true);
+
+  $('#s_go').disabled = true;
+  stell('Sending\u2026');
+  try {
+    const res = await fetch(API + '/videos', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(label ? {movement, url, label} : {movement, url}),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { stell(data.error || 'The library refused that one.', true); return; }
+    $('#s_url').value = ''; $('#s_label').value = '';
+    stell(data.duplicate ? 'Already there \u2014 someone got to it first.' : 'Shared. Thank you.');
+    await loadShared();
+  } catch (_) {
+    stell('Could not reach the shared library. Nothing was sent, and nothing else broke.', true);
+  } finally {
+    $('#s_go').disabled = false;
+  }
+});
+
+$('#shared').addEventListener('click', async e => {
+  const open = e.target.closest('.rep');
+  if (open) {
+    const why = open.closest('.vidrow').querySelector('.why');
+    why.hidden = !why.hidden;
+    return;
+  }
+  const go = e.target.closest('.why-go');
+  if (!go) return;
+  const row = go.closest('.vidrow');
+  const id = row.dataset.id;
+  row.querySelectorAll('.why-go').forEach(b => b.disabled = true);
+  try {
+    const res = await fetch(API + '/report', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({id, reason: go.dataset.r}),
+    });
+    if (!res.ok) throw new Error(res.status);
+    REPORTED.add(id);                     // gone from this page immediately, not on a refresh
+    renderShared(false);
+  } catch (_) {
+    row.querySelectorAll('.why-go').forEach(b => b.disabled = false);
+    row.querySelector('.why .hint').textContent = 'Could not send that report. Try again later.';
+  }
+});
+
 renderAreas();
 renderMine();
+fillPicker();
+loadShared();
 </script>
 </body>
 </html>

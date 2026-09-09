@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f2f2f0">
+  <title>Privacy &middot; notaroutine</title>
+  <meta name="description" content="What this site stores, what it does not, where the one server request goes, and how to report a shared link.">
+  <link rel="stylesheet" href="../style.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23f2f2f0'/%3E%3Cpath d='M4 8h8M4 5.5h8M4 10.5h8' stroke='%230a0a0a' stroke-width='1.3'/%3E%3C/svg%3E">
+</head>
+<body>
+<div class="wrap">
+
+  <header class="mast">
+    <a class="home" href="../index.html">notaroutine</a>
+    <nav class="top">
+      <a href="../builder/">Builder</a>
+      <a href="../sessions/">Sessions</a>
+      <a href="../videos/">Videos</a>
+      <a href="../training/">Training</a>
+      <a href="../nutrition/">Nutrition</a>
+      <a href="../supplements/">Supplements</a>
+      <a href="../travel/">Travel</a>
+    </nav>
+  </header>
+
+  <h1>Privacy</h1>
+  <p class="lede">This is a personal log that happens to be readable by anyone. It has no
+  accounts, no analytics and no advertising, and it collects nothing about you. There is
+  exactly one place where anything leaves your browser, and you have to press a button
+  to make it happen.</p>
+
+  <p class="n1">N=1, not medical advice. This page describes how the site handles data,
+  which is a different thing from being legal advice about your data.</p>
+
+  <h2>Everything you log stays in your browser</h2>
+
+  <p>Sessions, the plans you build, the weights and reps you type in, your own movements
+  and their links, your readiness numbers &mdash; all of it is written to this browser&rsquo;s
+  local storage on this device. It is not uploaded. There is no server that holds it,
+  which also means there is no server that can be asked for it, breached for it, or sold
+  with it.</p>
+
+  <p>The flip side is honest: clearing your site data deletes it, and it does not follow
+  you to another device or another browser. Nobody can send it back to you, including me.</p>
+
+  <h2>Readiness data never leaves the device. At all.</h2>
+
+  <p>Recovery, HRV, resting heart rate, sleep, sleep performance, strain, and whatever
+  you type into the notes field &mdash; that is health data, and it is the most revealing
+  thing on this site. It is never put in a request, never synced, never backed up
+  anywhere. The one server this site talks to has no endpoint that would accept it: a
+  request carrying it would be answered with a 404 before anything read the body.</p>
+
+  <p>The <strong>Copy the prompt</strong> and <strong>Copy brief</strong> buttons put
+  text on your clipboard. If you then paste that into Whoop, Claude or anything else,
+  the data goes wherever you pasted it, under that company&rsquo;s terms rather than these.
+  That is your decision each time, which is exactly why it is a copy button and not an
+  integration.</p>
+
+  <h2>The one request: the shared video library</h2>
+
+  <p>The <a href="../videos/">Videos</a> page has a shared library at
+  <code>api.notaroutine.life</code>. Your browser asks it for the list when that page
+  opens, and posts to it when you press <strong>Share it</strong> or report an entry.
+  Nothing else on the site talks to it, and every page works normally when it is
+  unreachable &mdash; the shared list goes empty and says so.</p>
+
+  <p>An entry in that library is five things and nothing else:</p>
+
+  <ul>
+    <li><strong>The movement</strong> it shows, chosen from the list.</li>
+    <li><strong>The link</strong>, which must point at YouTube, Instagram, Vimeo or
+    TikTok. Everything after the address is stripped before it is stored &mdash; share
+    links carry identifiers like <code>igshid</code> and <code>utm_source</code>, and
+    some of those name whoever copied the link.</li>
+    <li><strong>Your note</strong>, if you wrote one.</li>
+    <li><strong>Whether it has been reported</strong>, from a fixed list of reasons.</li>
+    <li><strong>A random id</strong>, so a report can say which entry it means. It is
+    generated fresh and carries no order and no origin.</li>
+  </ul>
+
+  <p>There is no column for who submitted it, when, from where, or with what. There is
+  no timestamp at all, and entries are ordered by movement name and then by that random
+  id, so the list cannot be read back as a record of who was here when. Two entries from
+  the same person cannot be linked to each other, by me or by anybody else.</p>
+
+  <h2>No accounts, no cookies, no analytics</h2>
+
+  <p>No email address, no username, no phone number, no password. No cookies of any
+  kind, including the ones sites set for their own analytics. No Google Analytics, no
+  Plausible, no pixels, no embedded players, no fonts loaded from anyone else&rsquo;s
+  server &mdash; the two typefaces are files in this repository. Nothing on any page makes
+  a request to a third party.</p>
+
+  <h2>What the hosts see, because it would be dishonest not to say</h2>
+
+  <p>The site is served by GitHub Pages, and the shared library runs on Cloudflare. Any
+  computer that serves you a file necessarily receives the request that asked for it,
+  which includes your IP address. That is true of every website and I cannot make it
+  untrue; what I can do is not use it. The Worker keeps no logs &mdash; request
+  observability is turned off &mdash; and nothing about a request is written to the
+  database.</p>
+
+  <p>The rate limit that stops one person flooding the library is Cloudflare&rsquo;s own,
+  counted at their edge. What it is handed is a hash of the connecting address rather
+  than the address, and it is a counter that expires after a minute, not a record.</p>
+
+  <h2>Reporting something in the shared library</h2>
+
+  <p>Every shared entry has a <strong>report</strong> button. Press it, pick what is
+  wrong &mdash; dead link, wrong movement, unsafe, spam, not a movement &mdash; and the
+  entry is hidden immediately, before anyone reviews it. No account, no explanation
+  needed, no free-text box: there is deliberately nowhere in that flow to type something
+  about yourself.</p>
+
+  <p>The trade is that one press hides an entry for everybody. Something good will
+  occasionally get hidden, and that is the direction to be wrong in.</p>
+
+  <p>Anything else &mdash; a link that should come down, a question about this page &mdash;
+  goes to <a href="mailto:hello@notaroutine.life">hello@notaroutine.life</a>. That
+  address is a person, not a signup.</p>
+
+  <h2>Deleting things</h2>
+
+  <p>Your own data: clear this site&rsquo;s data in your browser, or use the clear buttons
+  on the builder and sessions pages. It is gone at that point, everywhere, because there
+  was only ever the one copy.</p>
+
+  <p>Something you shared: report it, or email the address above. Since nothing ties an
+  entry to you, I cannot find &ldquo;everything you submitted&rdquo; on request &mdash; that
+  is the cost of not knowing who you are, and it is the right cost.</p>
+
+  <h2>What isn&rsquo;t working</h2>
+
+  <ul>
+    <li><strong>One report hides an entry, and that is abusable.</strong> Anyone
+    determined enough could hide the whole library. There is no moderation queue and no
+    way to appeal except email. If it becomes a problem the fix is a review step, not a
+    login.</li>
+
+    <li><strong>Local-only storage loses things.</strong> People clear site data by
+    accident, phones get replaced, and a browser can evict local storage under pressure.
+    Right now the answer is that your log lives in one browser and nowhere else, which
+    is private and fragile in equal measure.</li>
+
+    <li><strong>Nothing here has been audited.</strong> The claims on this page are
+    checkable &mdash; the site and the Worker are both
+    <a href="https://github.com/mykyta-pla/training-log" rel="noopener">open source</a>,
+    and the tests assert some of them &mdash; but nobody independent has looked.</li>
+
+    <li><strong>This page can go stale.</strong> If a feature ships and this page
+    doesn&rsquo;t change with it, this page is wrong. That has not happened yet, and
+    saying so here is the only guard against it.</li>
+  </ul>
+
+  <hr>
+  <p><a href="../videos/">Back to the videos &rarr;</a></p>
+
+  <footer>
+    <p>A personal log. Updated when something changes, not on a schedule.</p>
+    <p class="fmeta"><a href="../privacy/">Privacy</a> &middot;
+       <a href="mailto:hello@notaroutine.life">hello@notaroutine.life</a></p>
+  </footer>
+
+</div>
+</body>
+</html>
