@@ -1,0 +1,16 @@
+{
+  "name": "notaroutine-api",
+  "private": true,
+  "type": "module",
+  "description": "The shared video library for notaroutine.life. Nothing else lives here.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "schema": "wrangler d1 execute notaroutine-videos --remote --file=./schema.sql",
+    "schema:local": "wrangler d1 execute notaroutine-videos --local --file=./schema.sql",
+    "test": "node test/api.test.js"
+  },
+  "devDependencies": {
+    "wrangler": "^4.42.0"
+  }
+}

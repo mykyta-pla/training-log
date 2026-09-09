@@ -15,15 +15,32 @@ movements.js          the movement library and starting loads, shared by
                       builder, sessions and videos
 builder/              session builder — readiness, drawing the plan, history
 sessions/             your saved plans: trained and logged here
-videos/               paste a link and tag it: your own movements,
-                      drawn before the defaults
+videos/               paste a link and tag it: your own movements, drawn before
+                      the defaults — plus the shared library anyone can add to
 training/             structure, mobility menu, variability-first programming
 nutrition/            restaurant and business-lunch playbook
 supplements/          thinking + honesty audit, with evidence grades
 travel/               travel-mode training and eating
+privacy/              what is stored, what is not, and how to report an entry
 private/              encrypted; noindex
+worker/               the api.notaroutine.life Worker: the shared video library
 style.css             the whole design system
 ```
+
+## The shared video library
+
+One request, on one page. `videos/` asks `api.notaroutine.life` for the shared
+list when it opens, and posts to it when you share a link or report an entry.
+Everything else on the site is still files and localStorage, and every page
+works normally when that API is unreachable — the shared list goes empty and
+says so.
+
+An entry is a movement, a link, an optional note, a status flag and a random
+id. No submitter, no IP, no timestamp, nothing that ties an entry to a person
+or two entries to each other. Readiness and tracker data never go near it:
+there is no endpoint that would accept them. The Worker, its schema and its
+tests are in `worker/`; what is kept and what isn't is written out in
+`privacy/`.
 
 ## Adding a session
 

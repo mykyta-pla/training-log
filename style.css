@@ -740,7 +740,7 @@ button.link:hover { color: var(--signal); }
   color: var(--grey);
 }
 label.wide { margin-bottom: var(--s4); }
-.fields input, label.wide input, #r_dev {
+.fields input, label.wide input, label.wide select, #r_dev {
   display: block; width: 100%; margin-top: var(--s2);
   min-height: var(--tap);
   background: var(--card);
@@ -763,11 +763,11 @@ label.wide textarea {
   text-transform: none; letter-spacing: 0;
   resize: vertical;
 }
-.fields input:focus, label.wide input:focus, label.wide textarea:focus,
-#r_dev:focus {
+.fields input:focus, label.wide input:focus, label.wide select:focus,
+label.wide textarea:focus, #r_dev:focus {
   outline: none; border-color: var(--ink);
 }
-#r_dev { font-family: var(--sans); font-size: 15px; }
+#r_dev, label.wide select { font-family: var(--sans); font-size: 15px; }
 #r_paste { min-height: 8rem; font-family: var(--mono); font-size: 13px; }
 #r_note  { min-height: 6.5rem; }
 
@@ -901,11 +901,33 @@ ul.vidlist li.vidrow:last-child { border-bottom: 0; }
 .vidrow .vn .exd { margin-top: 1px; }
 .vidrow.has .vn { color: var(--ink); }
 .vidrow .vin { flex: 1 1 auto; display: flex; gap: var(--s2); align-items: center; }
+/* Why an entry is being reported: hidden until the report button asks. */
+.vidrow .why { flex: 1 1 100%; display: block; padding-top: var(--s2); }
+.vidrow .why[hidden] { display: none; }
+.vidrow .why .hint { display: block; margin: 0 0 var(--s2); }
+.vidrow .why .chips { margin: 0; }
+.vidrow .why .chip { min-height: var(--tap); font-size: 13px; }
+.vidrow .why .chip[disabled] { opacity: .45; }
+/* The one report that takes an entry down carries the signal colour, because it
+   is the only control here that changes what everybody else sees. */
+.vidrow .why .chip.danger { border-color: var(--signal); color: var(--signal); }
+.vidrow .why .chip.danger.on,
+.vidrow .why .chip.danger:hover { background: var(--signal); border-color: var(--signal); color: var(--paper); }
 @media (min-width: 32rem) {
   ul.vidlist li.vidrow { flex-wrap: nowrap; }
   .vidrow .vn { flex: 1 1 auto; }
   .vidrow .vin { flex: 0 0 auto; }
 }
+
+/* Footer links are the one thing down here you tap, so they carry a 44px hit
+   area. The negative margin keeps the footer's rhythm while the padding does it. */
+footer .fmeta { margin-top: 0; }
+footer .fmeta a {
+  display: inline-block;
+  padding: 13px 4px; margin: -13px 0;
+  color: var(--grey);
+}
+footer .fmeta a:hover { color: var(--ink); }
 
 ul.plain { list-style: none; padding: 0; margin: 0 0 var(--s4); }
 ul.plain li {

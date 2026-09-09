@@ -3,9 +3,10 @@
 Read this before touching anything.
 
 ## What this is
-A personal training and health log at notaroutine.life. One person's
-log — not a product, not advice. Published in the open; strangers may
-find it, but it is not built for them.
+A personal log at notaroutine.life, published in the open. One shared
+resource — the video library — is open to contributions from anyone.
+Everything else is one person's record and is not built for an
+audience. The N=1 voice does not change.
 
 ## Hard technical rules
 - Plain HTML and CSS. No framework, no build step, no npm, no bundler.
