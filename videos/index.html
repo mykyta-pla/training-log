@@ -91,16 +91,6 @@
 
   <div id="mine"></div>
 
-  <h2>The default library<span class="gcount" id="count"></span></h2>
-  <p class="hint">The movements that ship with the builder. Saving a link here doesn&rsquo;t
-  change what gets drawn &mdash; it only changes what the play button opens.</p>
-
-  <div class="vidhead">
-    <input id="filter" type="search" placeholder="Filter — squat, shoulder, hinge…" aria-label="Filter movements">
-  </div>
-
-  <div id="list"></div>
-
   <hr>
   <p class="n1">Movements and links are stored in this browser only. They are never uploaded,
   nobody else can see them, and they don&rsquo;t follow you to another device.</p>
@@ -212,7 +202,6 @@ $('#add').addEventListener('submit', e => {
   $$('#a_avoid .chip').forEach(c => c.classList.remove('on'));
   say(`Added. The builder will draw “${name}” before the defaults.`);
   renderMine();
-  render($('#filter').value);
 });
 
 /* ========================================================= your movements == */
@@ -256,67 +245,10 @@ $('#mine').addEventListener('click', e => {
   saveCustomMovements(list);
   delete VID[x.n]; saveVid();
   renderMine();
-  render($('#filter').value);
 });
-
-/* ======================================================= default library == */
-
-// "Dead bug" is filed under both spine mobility and core — same movement, one link.
-const seen = new Set();
-const BY_GROUP = GROUPS.map(([key, label]) => ({
-  key, label,
-  items: LIB.filter(x => x.p === key && !seen.has(x.n) && seen.add(x.n) !== undefined),
-})).filter(g => g.items.length);
-
-function render(q = '') {
-  const needle = q.trim().toLowerCase();
-  let h = '', shown = 0;
-
-  BY_GROUP.forEach(g => {
-    const items = g.items.filter(x =>
-      !needle || x.n.toLowerCase().includes(needle) || g.label.toLowerCase().includes(needle));
-    if (!items.length) return;
-    const withLinks = items.filter(x => VID[x.n]).length;
-    h += `<h3>${esc(g.label)} <span class="gcount">${withLinks}/${items.length}</span></h3>
-          <ul class="vidlist">`;
-    items.forEach(x => {
-      shown++;
-      const url = VID[x.n] || '';
-      h += `<li class="vidrow${url ? ' has' : ''}">
-        <span class="vn">${esc(x.n)}</span>
-        <span class="vin">
-          <input class="vurl" data-n="${esc(x.n)}" value="${esc(url)}"
-                 placeholder="paste a link" inputmode="url" spellcheck="false">
-          <a class="vidbtn${url ? '' : ' fallback'}" target="_blank" rel="noopener"
-             href="${esc(url || searchFor(x.n))}"
-             title="${url ? 'Open your saved link' : 'No link saved — search YouTube'}"
-             aria-label="Open video for ${esc(x.n)}">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 7l8 5-8 5V7z" stroke-linejoin="round"/></svg>
-          </a>
-        </span>
-      </li>`;
-    });
-    h += '</ul>';
-  });
-
-  $('#list').innerHTML = h || '<div class="note"><p>Nothing matches that.</p></div>';
-  const total = BY_GROUP.reduce((a, g) => a + g.items.length, 0);
-  const saved = BY_GROUP.reduce((a, g) => a + g.items.filter(x => VID[x.n]).length, 0);
-  $('#count').textContent = needle ? `${shown} of ${total}` : `${saved}/${total} linked`;
-}
-
-$('#list').addEventListener('change', e => {
-  const inp = e.target.closest('.vurl'); if (!inp) return;
-  const name = inp.dataset.n, url = tidy(inp.value);
-  if (url) VID[name] = url; else delete VID[name];
-  saveVid();
-  render($('#filter').value);
-});
-$('#filter').addEventListener('input', () => render($('#filter').value));
 
 renderAreas();
 renderMine();
-render();
 </script>
 </body>
 </html>
