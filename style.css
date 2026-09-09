@@ -12,10 +12,49 @@
    That contrast is the whole look.
 
    Two fonts: Space Grotesk for text, IBM Plex Mono for labels and figures.
-   They are named first in the stacks below but NOT fetched — the project
-   forbids third-party requests of any kind, so no Google Fonts link. On a
-   machine without them the system grotesque and system mono stand in. To get
-   the real faces the woff2 files have to be self-hosted in this repo. */
+   Both are self-hosted from fonts/ — latin-subset woff2, seven faces, 96 KB in
+   total. Nothing is fetched from Google or anywhere else; the project forbids
+   third-party requests of any kind. Both are open-licensed (OFL, copies in
+   fonts/), and font-display: swap means the page paints in the system
+   grotesque and mono first rather than holding text back. */
+
+/* url() resolves against this stylesheet, not the page, so one relative path
+   works from the root and from every subdirectory. */
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal; font-weight: 400; font-display: swap;
+  src: url('fonts/space-grotesk-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal; font-weight: 500; font-display: swap;
+  src: url('fonts/space-grotesk-500.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal; font-weight: 600; font-display: swap;
+  src: url('fonts/space-grotesk-600.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal; font-weight: 700; font-display: swap;
+  src: url('fonts/space-grotesk-700.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal; font-weight: 400; font-display: swap;
+  src: url('fonts/ibm-plex-mono-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal; font-weight: 500; font-display: swap;
+  src: url('fonts/ibm-plex-mono-500.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal; font-weight: 600; font-display: swap;
+  src: url('fonts/ibm-plex-mono-600.woff2') format('woff2');
+}
 
 :root {
   color-scheme: light;
@@ -150,6 +189,15 @@ h1 {
   letter-spacing: -.045em;
   margin: var(--s5) 0 0;
   text-wrap: balance;
+}
+
+/* The canvas strikes "routine" through in signal red — the argument of the whole
+   site, made in one colour. The only place a strike-through appears. */
+h1 .ko {
+  text-decoration: line-through;
+  text-decoration-color: var(--signal);
+  text-decoration-thickness: 5px;
+  text-decoration-skip-ink: none;
 }
 
 /* Section headings are technical labels, not sentences: Plex Mono, tracked

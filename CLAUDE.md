@@ -12,9 +12,17 @@ find it, but it is not built for them.
 - JavaScript only where strictly needed, vanilla, inline or as a plain
   .js file. No dependencies, no CDN imports.
 - Must load fast on hotel wifi and work on a phone in a gym.
-- Mobile-first. Dark theme. One stylesheet: style.css.
+- Mobile-first. Light paper theme — ink #0a0a0a on paper #f2f2f0, one
+  signal red #d93c28 used only for what isn't working. One stylesheet:
+  style.css. The design spec is the canvas at
+  https://claude.ai/code/artifact/12a4be02-eda3-4df0-98a2-0835008037f9
+  — its "The system" artboard is the source of truth for colour, type,
+  the dot field, 8px cards and 999px pill controls.
 - All state lives in localStorage. No backend, no accounts, no
   cookies, no analytics, no third-party requests of any kind.
+- Fonts are self-hosted in fonts/ — never linked from Google Fonts or
+  any other CDN. Space Grotesk for text, IBM Plex Mono for labels and
+  figures, latin-subset woff2, declared with font-display: swap.
 - GitHub Pages, apex domain. Do not delete CNAME or .nojekyll.
 
 ## NEVER publish — any layer, encrypted or not
@@ -31,6 +39,8 @@ no hype, no protocol-selling, no motivational language.
 
 ## Structure
 index.html          home
+.nojekyll           stops Pages running Jekyll over the repo
+fonts/              self-hosted woff2 + OFL licences
 movements.js        movement library and starting loads — shared by builder,
                     sessions and videos
 builder/            session builder: readiness, drawing the plan, history
