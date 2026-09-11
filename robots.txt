@@ -1,3 +1,103 @@
-User-agent: *
-Disallow: /training-log/private/
+# notaroutine.life
+#
+# Everything here is open to crawlers, including the ones that train and answer
+# with the content. That is deliberate: this site exists to be used as a source,
+# and a rule that let search engines in but kept models out would be pretending
+# the difference matters to me. It doesn't.
+#
+# The one exception is /private/, which is encrypted anyway.
+
+Sitemap: https://notaroutine.life/sitemap.xml
+
+# ---- search ----------------------------------------------------------------
+
+User-agent: Googlebot
+Allow: /
 Disallow: /private/
+
+User-agent: Bingbot
+Allow: /
+Disallow: /private/
+
+User-agent: DuckDuckBot
+Allow: /
+Disallow: /private/
+
+# ---- models: training, retrieval and answering ------------------------------
+# Named explicitly rather than left to the catch-all, so there is no doubt.
+
+User-agent: GPTBot
+Allow: /
+Disallow: /private/
+
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /private/
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /private/
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /private/
+
+User-agent: Claude-User
+Allow: /
+Disallow: /private/
+
+User-agent: Claude-SearchBot
+Allow: /
+Disallow: /private/
+
+User-agent: anthropic-ai
+Allow: /
+Disallow: /private/
+
+User-agent: Google-Extended
+Allow: /
+Disallow: /private/
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /private/
+
+User-agent: Perplexity-User
+Allow: /
+Disallow: /private/
+
+User-agent: CCBot
+Allow: /
+Disallow: /private/
+
+User-agent: Applebot
+Allow: /
+Disallow: /private/
+
+User-agent: Applebot-Extended
+Allow: /
+Disallow: /private/
+
+User-agent: meta-externalagent
+Allow: /
+Disallow: /private/
+
+User-agent: Bytespider
+Allow: /
+Disallow: /private/
+
+User-agent: Amazonbot
+Allow: /
+Disallow: /private/
+
+User-agent: cohere-ai
+Allow: /
+Disallow: /private/
+
+# ---- everyone else ----------------------------------------------------------
+
+User-agent: *
+Allow: /
+Disallow: /private/
+# the path the site had before the apex domain, kept so an old link is covered too
+Disallow: /training-log/private/

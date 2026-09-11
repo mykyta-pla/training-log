@@ -4,11 +4,81 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f2f2f0">
-  <title>Sessions &middot; notaroutine</title>
-  <meta name="description" content="Sessions saved from the builder — waiting to be trained, and the ones already done. Weights and reps are logged here.">
+
+  <title>Sessions &mdash; log the weights and reps you hit</title>
+  <meta name="description" content="Saved sessions, trained and logged here. Kilos and reps per set, prefilled with what you lifted last time, kept in this browser and uploaded nowhere.">
+  <link rel="canonical" href="https://notaroutine.life/sessions/">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="notaroutine">
+  <meta property="og:locale" content="en_GB">
+  <meta property="og:title" content="Sessions &mdash; log the weights and reps you hit">
+  <meta property="og:description" content="Saved sessions, trained and logged here. Kilos and reps per set, prefilled with what you lifted last time, kept in this browser and uploaded nowhere.">
+  <meta property="og:url" content="https://notaroutine.life/sessions/">
+  <meta property="og:image" content="https://notaroutine.life/og.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="The words &ldquo;not a routine&rdquo; on pale paper, with &ldquo;routine&rdquo; struck through in red.">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Sessions &mdash; log the weights and reps you hit">
+  <meta name="twitter:description" content="Saved sessions, trained and logged here. Kilos and reps per set, prefilled with what you lifted last time, kept in this browser and uploaded nowhere.">
+  <meta name="twitter:image" content="https://notaroutine.life/og.png">
+  <meta name="twitter:image:alt" content="The words &ldquo;not a routine&rdquo; on pale paper, with &ldquo;routine&rdquo; struck through in red.">
+
   <link rel="stylesheet" href="../style.css">
   <script src="../movements.js"></script>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23f2f2f0'/%3E%3Cpath d='M4 8h8M4 5.5h8M4 10.5h8' stroke='%230a0a0a' stroke-width='1.3'/%3E%3C/svg%3E">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://notaroutine.life/#org",
+        "name": "notaroutine",
+        "url": "https://notaroutine.life/",
+        "email": "hello@notaroutine.life",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://notaroutine.life/og.png",
+          "width": 1200,
+          "height": 630
+        }
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://notaroutine.life/#website",
+        "url": "https://notaroutine.life/",
+        "name": "notaroutine",
+        "description": "A personal training and health log: a session builder that never repeats, and an honest account of what is not working.",
+        "publisher": {
+          "@id": "https://notaroutine.life/#org"
+        },
+        "inLanguage": "en-GB"
+      },
+      {
+        "@type": "BreadcrumbList",
+        "@id": "https://notaroutine.life/sessions/#breadcrumbs",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "notaroutine",
+            "item": "https://notaroutine.life/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Sessions",
+            "item": "https://notaroutine.life/sessions/"
+          }
+        ]
+      }
+    ]
+  }
+  </script>
 </head>
 <body>
 <div class="wrap">
@@ -26,6 +96,8 @@
     </nav>
   </header>
 
+  <main>
+
   <h1>Sessions</h1>
   <p class="lede">Everything you&rsquo;ve built. Saved ones are waiting to be trained &mdash; open one
   and log what you actually lifted. The rest are done, newest first.</p>
@@ -33,11 +105,23 @@
   <p class="n1">N=1, not medical advice. This is one person&rsquo;s log, tuned to one set of
   injuries and constraints. Nothing here is a recommendation.</p>
 
-  <div id="list"></div>
+  <div id="list">
+    <div class="note"><p>Nothing here yet. Set the constraints in the
+    <a href="../builder/">session builder</a> and press <strong>Save session</strong> &mdash;
+    it lands here, waiting to be trained and logged.</p></div>
+  </div>
+
+  <noscript>
+    <p class="hint">Saved sessions are read from this browser&rsquo;s local storage, so this
+    list needs JavaScript. Nothing is stored on a server, which is also why there is nothing
+    here for anyone else to read.</p>
+  </noscript>
 
   <hr>
   <p class="n1">Sessions live in this browser only &mdash; never uploaded, never seen by anyone
   else, and they don&rsquo;t follow you to another device. Clearing your site data erases them.</p>
+
+  </main>
 
   <footer>
     <p>A personal log. Updated when something changes, not on a schedule.</p>
@@ -135,7 +219,7 @@ function logBody(s) {
   const C = 2 * Math.PI * 31;                       // r=31 inside a 74px box
   const ring = `<span class="ring${pct === 1 ? ' full' : ''}"
       role="img" aria-label="${ticked} of ${all.length} movements done">
-      <svg viewBox="0 0 74 74" aria-hidden="true">
+      <svg aria-hidden="true" focusable="false" viewBox="0 0 74 74" aria-hidden="true">
         <circle class="track" cx="37" cy="37" r="31"></circle>
         ${pct > 0 ? `<circle class="val" cx="37" cy="37" r="31"
                 stroke-dasharray="${(C * pct).toFixed(1)} ${C.toFixed(1)}"></circle>` : ''}
@@ -196,7 +280,7 @@ function logBody(s) {
                href="${esc(videoFor(it.name))}"
                title="${VID[it.name] ? 'Your saved video' : 'No link saved — searches YouTube'}"
                aria-label="Video for ${esc(it.name)}">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 7l8 5-8 5V7z" stroke-linejoin="round"/></svg>
+              <svg aria-hidden="true" focusable="false" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 7l8 5-8 5V7z" stroke-linejoin="round"/></svg>
             </a>
             <button type="button" class="swap" data-id="${id}" data-b="${bi}" data-i="${ii}">swap</button>
           </li>`;
@@ -251,8 +335,8 @@ function render() {
 
   if (!planned.length && !done.length) {
     el.innerHTML = `<div class="note"><p>Nothing here yet. Set the constraints in the
-      <a href="../builder/">builder</a> and press <strong>Build and open the session</strong>
-      — it lands here, open and waiting.</p></div>`;
+      <a href="../builder/">session builder</a> and press <strong>Save session</strong> —
+      it lands here, waiting to be trained and logged.</p></div>`;
     return;
   }
 
