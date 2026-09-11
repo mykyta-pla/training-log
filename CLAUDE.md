@@ -93,6 +93,8 @@ builder/            session builder: readiness, drawing the plan, history
 sessions/           saved plans, trained and logged here — weights and reps
 videos/             paste a link, tag it, and it joins the library — your
                     movements are drawn before the defaults (tl.custom)
+movements/          the whole movement library as plain HTML — generated from
+                    movements.js by tools/build-library.js, never edited by hand
 training/           structure, mobility menu, variability-first
 nutrition/          restaurant and business-lunch playbook
 supplements/        honesty audit with evidence grades
@@ -104,7 +106,7 @@ worker/             the api.notaroutine.life Worker — the shared video library
                     wrangler and a package.json live here, never at the root
 style.css           the whole design system
 tools/              repo scripts, never served: the og card, the sitemap, the
-                    movement library block in training/, the JSON-LD check
+                    movement library block in movements/, the JSON-LD check
 
 ## Before you finish
 - Test at 390px width. No horizontal overflow.
