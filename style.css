@@ -921,6 +921,16 @@ ul.vidlist li.vidrow:last-child { border-bottom: 0; }
 
 /* Footer links are the one thing down here you tap, so they carry a 44px hit
    area. The negative margin keeps the footer's rhythm while the padding does it. */
+/* When a page's content last changed. Same register as the N=1 line above it:
+   a fact about the page, not part of the page. */
+p.updated {
+  font: 400 11px/1.6 var(--mono);
+  letter-spacing: .06em; text-transform: uppercase;
+  color: var(--faint);
+  margin: calc(-1 * var(--s3)) 0 var(--s5);
+}
+p.updated time { color: var(--grey); }
+
 footer .fmeta { margin-top: 0; }
 footer .fmeta a {
   display: inline-block;

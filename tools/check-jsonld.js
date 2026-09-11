@@ -48,6 +48,9 @@ const VOCAB = {
   ExercisePlan: CREATIVE.concat(['activityDuration', 'activityFrequency', 'additionalVariable',
                                  'exerciseType', 'intensity', 'repetitions', 'restPeriods',
                                  'workload']),
+  FAQPage: CREATIVE.concat(['mainEntity', 'breadcrumb', 'speakable']),
+  Question: CREATIVE.concat(['acceptedAnswer', 'answerCount', 'suggestedAnswer', 'upvoteCount']),
+  Answer: CREATIVE.concat(['upvoteCount']),
   Thing: THING,
 };
 
@@ -62,6 +65,9 @@ const REQUIRED = {
   PropertyValue: ['name', 'value'],
   DietarySupplement: ['name'],
   ExercisePlan: ['name'],
+  FAQPage: ['mainEntity'],
+  Question: ['name', 'acceptedAnswer'],
+  Answer: ['text'],
   ImageObject: ['url'],
 };
 
@@ -149,6 +155,28 @@ for (const page of PAGES) {
   if (list.numberOfItems !== list.itemListElement.length)
     fail(page, `numberOfItems is ${list.numberOfItems}, the list has ${list.itemListElement.length}`);
   console.log(`\nsupplements: ${list.itemListElement.length} in the markup, ${rows} in the table.`);
+}
+
+// Every FAQ answer has to be on the page it is marked up on — Google requires it,
+// and a question answered only in the markup would be a claim nobody can check.
+for (const page of PAGES) {
+  const html = fs.readFileSync(page, 'utf8');
+  const m = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+  if (!m) continue;
+  const node = (JSON.parse(m[1])['@graph'] || []).find(n => n['@type'] === 'FAQPage');
+  if (!node) continue;
+  const visible = html.replace(/<script[\s\S]*?<\/script>/g, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&rsquo;/g, '’').replace(/&mdash;/g, '—').replace(/&ndash;/g, '–')
+    .replace(/&ldquo;/g, '“').replace(/&rdquo;/g, '”').replace(/&amp;/g, '&')
+    .replace(/\s+/g, ' ');
+  for (const q of node.mainEntity) {
+    if (!visible.includes(q.name))
+      fail(page, `the FAQ markup asks "${q.name.slice(0, 40)}…", which is not on the page`);
+    if (!visible.includes(q.acceptedAnswer.text))
+      fail(page, `the answer to "${q.name.slice(0, 40)}…" is not on the page word for word`);
+  }
+  console.log(`${page.padEnd(24)} ${node.mainEntity.length} FAQ answers, all on the page`);
 }
 
 console.log(`\n${blocks} blocks, ${nodes} nodes, ${errors} problem${errors === 1 ? '' : 's'}.`);

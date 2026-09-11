@@ -56,8 +56,15 @@ audience. The N=1 voice does not change.
 - Every page must serve its meaning in the HTML source. A crawler that
   runs no JavaScript has to see the headings, the prose and the lists.
   Script may enhance a page; it may not be the only way to read it.
-- Any new page is added to sitemap.xml in the same commit that creates
-  it — run tools/build-sitemap.js, which fails if a page is missing.
+- Any new page is added to sitemap.xml and to llms.txt in the same commit
+  that creates it — run tools/build-sitemap.js, which fails if a page is
+  missing from the sitemap.
+- A number in the prose carries its own qualifier in the same sentence or
+  the one beside it. If a figure is an estimate, the paragraph it lives in
+  says so — not a section further down. Anything lifting one sentence out
+  of a page should get something true on its own.
+- FAQ markup mirrors a visible section word for word. No question that the
+  page does not answer, and no answer that only exists in the markup.
 - Per page: one h1, headings in order, a unique title under 60
   characters, a description of 140–160, and an absolute canonical.
 - No analytics, ever, and that includes Google Analytics. Nothing that
@@ -86,6 +93,7 @@ CNAME               the apex domain
 robots.txt          search and model crawlers welcome, /private/ disallowed
 sitemap.xml         every public page and when its content last changed
 og.png              1200×630 social card, built by tools/render-og.js
+llms.txt            what is first-hand here, for anything reading the site
 fonts/              self-hosted woff2 + OFL licences
 movements.js        movement library, starting loads, and the movements you added
                     yourself — shared by builder, sessions and videos
