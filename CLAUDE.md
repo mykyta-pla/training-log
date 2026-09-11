@@ -53,6 +53,19 @@ audience. The N=1 voice does not change.
   any other CDN. Space Grotesk for text, IBM Plex Mono for labels and
   figures, latin-subset woff2, declared with font-display: swap.
 - GitHub Pages, apex domain. Do not delete CNAME or .nojekyll.
+- Every page must serve its meaning in the HTML source. A crawler that
+  runs no JavaScript has to see the headings, the prose and the lists.
+  Script may enhance a page; it may not be the only way to read it.
+- Any new page is added to sitemap.xml in the same commit that creates
+  it — run tools/build-sitemap.js, which fails if a page is missing.
+- Per page: one h1, headings in order, a unique title under 60
+  characters, a description of 140–160, and an absolute canonical.
+- No analytics, ever, and that includes Google Analytics. Nothing that
+  phones home for a "free" tool. The one allowed request is the shared
+  video library and nothing else joins it.
+- Structured data is inline JSON-LD, no library. Author and publisher
+  are the Organization "notaroutine" — never a Person, never a name.
+  Run tools/check-jsonld.js before pushing.
 
 ## NEVER publish — any layer, encrypted or not
 No medical conditions, diagnoses or protocols. No medications,
@@ -69,6 +82,10 @@ no hype, no protocol-selling, no motivational language.
 ## Structure
 index.html          home
 .nojekyll           stops Pages running Jekyll over the repo
+CNAME               the apex domain
+robots.txt          search and model crawlers welcome, /private/ disallowed
+sitemap.xml         every public page and when its content last changed
+og.png              1200×630 social card, built by tools/render-og.js
 fonts/              self-hosted woff2 + OFL licences
 movements.js        movement library, starting loads, and the movements you added
                     yourself — shared by builder, sessions and videos
@@ -86,9 +103,14 @@ worker/             the api.notaroutine.life Worker — the shared video library
                     and nothing else. Deployed by Cloudflare Workers Builds;
                     wrangler and a package.json live here, never at the root
 style.css           the whole design system
+tools/              repo scripts, never served: the og card, the sitemap, the
+                    movement library block in training/, the JSON-LD check
 
 ## Before you finish
 - Test at 390px width. No horizontal overflow.
 - Touch targets 44px minimum.
 - No console errors.
+- Read the page with JavaScript off. If the content is gone, fix it.
+- node tools/build-sitemap.js --check, tools/build-library.js --check,
+  tools/check-jsonld.js — all three clean.
 - Do not add files to the repo root beyond what is listed above.
