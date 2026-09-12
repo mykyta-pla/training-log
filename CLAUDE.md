@@ -40,6 +40,20 @@ audience. The N=1 voice does not change.
   session id, no identifier of any kind — nothing that could tie an
   entry back to a person, or two entries to each other. A field that
   describes a person does not go in, whatever it would buy.
+- Named so there is nothing to interpret: no IP address, no user
+  agent, no device or browser information, no locale or language, no
+  timestamp of any kind, no session or visitor identifier, and no
+  free-text field belonging to the submitter — no note, no comment,
+  no reason in prose. Not hashed, not truncated, not bucketed, not
+  "derived from". The two free-text fields that do exist, the
+  movement's name and its prescription, describe the movement, and
+  are length-capped and stripped of control characters. This list is
+  not exhaustive and is not an invitation to find the gaps in it.
+- Adding a column to the shared library needs the owner's explicit
+  approval, in the task that asks for it. An agent may propose a
+  column, and must then stop and wait. It may not add one, and may
+  not widen an existing column to carry something a new column would
+  have held.
 - Every movement carries a technique rating: s straightforward, p
   practised, c coached. It rates the skill the movement demands, not
   how hard it feels. On anything from the shared library it is
