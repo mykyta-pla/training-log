@@ -118,9 +118,13 @@
   </div>
 
   <div id="ready" class="off">
-    <p class="hint">From Whoop, or wherever you track it. Leave anything blank that you
-    don&rsquo;t have &mdash; recovery alone is enough to change the session. Values stay in this
-    browser and are remembered, so most mornings you&rsquo;re editing one or two.</p>
+    <p class="hint">From Whoop, or wherever you track it. Leave anything blank.</p>
+
+    <details class="how">
+      <summary>How this works</summary>
+      <p class="hint">Recovery alone is enough to change the session. Values stay in this
+      browser and are remembered, so most mornings you&rsquo;re editing one or two.</p>
+    </details>
     <details class="trk">
       <summary>Get these from your tracker &mdash; Whoop, Oura, Garmin&hellip;</summary>
       <p class="hint">Copy the prompt, paste it to your tracker&rsquo;s assistant, then paste
@@ -225,8 +229,7 @@
     <div class="blk">
       <label class="tog"><input type="checkbox" id="b_str" checked><span>Strength</span></label>
       <div class="sub" id="s_str">
-        <p class="hint">Focus &mdash; combine them if you want. Upper + Lower alternates
-        between the two rather than spending the session on whichever came first.</p>
+        <p class="hint">Focus &mdash; combine them if you want.</p>
         <div class="chips multi" id="strfocus">
           <button type="button" class="chip on" data-v="full">Full body</button>
           <button type="button" class="chip" data-v="upper">Upper</button>
@@ -235,6 +238,13 @@
           <button type="button" class="chip" data-v="pull">Pull</button>
           <button type="button" class="chip" data-v="post">Posterior chain</button>
         </div>
+        <details class="how">
+          <summary>How combining works</summary>
+          <p class="hint">Upper + Lower alternates between the two rather than spending the
+          session on whichever came first, so four exercises give two of each. Full body
+          doesn&rsquo;t combine: picking it clears the rest.</p>
+        </details>
+
         <p class="hint">Format</p>
         <div class="chips" id="strfmt">
           <button type="button" class="chip on" data-v="straight">Straight sets</button>
@@ -273,13 +283,18 @@
     </div>
 
     <h2>Repeats</h2>
-    <p class="hint" id="freshhint">Movements from your last 2 completed sessions go to the back
-    of the queue. If a slot has nothing else left, it takes the least recent instead of failing.</p>
     <div class="chips" id="fresh">
       <button type="button" class="chip on" data-v="2">Avoid last 2 sessions</button>
       <button type="button" class="chip" data-v="4">Avoid last 4</button>
       <button type="button" class="chip" data-v="0">Don&rsquo;t care</button>
     </div>
+
+    <details class="how">
+      <summary>What that does</summary>
+      <p class="hint" id="freshhint">Movements from your last 2 completed sessions go to the
+      back of the queue. If a slot has nothing else left, it takes the least recent instead of
+      failing.</p>
+    </details>
 
     <div class="row">
       <button type="submit" id="go">Build the session</button>
@@ -288,7 +303,15 @@
   </form>
 
   <!-- ============================ OUTPUT ============================ -->
+  <div id="flow">
   <div id="out" hidden></div>
+
+  <!-- Sticky between the session and the history, and hidden by CSS alone when
+       there is no session: #out[hidden] + .stickbar. -->
+  <div class="stickbar">
+    <span class="sbsum" id="sbsum"></span>
+    <button type="button" id="restart">New</button>
+  </div>
 
   <noscript>
     <div class="note"><p>The builder draws the session in your browser, so it needs
@@ -299,6 +322,7 @@
 
   <!-- ============================ HISTORY ============================ -->
   <div id="hist"></div>
+  </div>
 
   <hr>
   <p class="n1">Everything here &mdash; sessions, history, the loads you type in &mdash; is stored
@@ -955,6 +979,10 @@ function render(S) {
           <p class="status" id="copystatus"></p>
         </div>`;
 
+  const kit = {'0':'bodyweight','1':'bands','2':'dumbbells','3':'full gym'}[S.equip];
+  $('#sbsum').textContent =
+    `${S.total} min · ${kit} · ${S.blocks.length} block${S.blocks.length === 1 ? '' : 's'}`;
+
   const out = $('#out'); out.innerHTML = h; out.hidden = false;
 }
 
@@ -1040,11 +1068,22 @@ $('#out').addEventListener('click', e => {
       .catch(() => $('#copystatus').textContent = 'Copy failed — select and copy by hand.');
     return;
   }
-  if (e.target.id === 'clear') {
-    drop(K.current); CURRENT = null; $('#out').hidden = true; $('#out').innerHTML = '';
-    setForm(true);
-  }
+  if (e.target.id === 'clear') { restart(); }
 });
+
+$('#restart').addEventListener('click', restart);
+
+// Throwing the session away has to put you back where you start it, not leave
+// you at the bottom of a page that no longer has anything on it.
+function restart() {
+  drop(K.current); CURRENT = null;
+  $('#out').hidden = true; $('#out').innerHTML = '';
+  setForm(true);
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  window.scrollTo({top: 0, behavior: still ? 'auto' : 'smooth'});
+  const first = $('#dur .chip');
+  if (first) first.focus({preventScroll: true});
+}
 
 $('#hist').addEventListener('click', e => {
   const open = e.target.closest('.hopen');
