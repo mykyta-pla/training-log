@@ -143,8 +143,7 @@
       <button type="button" class="chip on" data-v="3">Full gym</button>
     </div>
 
-    <p class="hint">Tag it if it involves any of these, so the builder can hold it back on
-    the days you say to avoid them</p>
+    <p class="hint">Tag it if it involves any of these</p>
     <div class="chips multi" id="a_avoid" role="group" aria-label="Avoid tags">
       <button type="button" class="chip" data-v="deepknee">Deep knee flexion</button>
       <button type="button" class="chip" data-v="overhead">Overhead</button>
@@ -157,6 +156,13 @@
       <input id="a_dose" type="text" spellcheck="false" placeholder="8 each side, 45 sec…">
     </label>
 
+    <details class="how">
+      <summary>What the tags do</summary>
+      <p class="hint">Tell the builder to avoid one of them on a given day and every movement
+      carrying that tag drops out of the draw. What you add here is stored in this browser
+      only, and is drawn before the movements the builder ships with.</p>
+    </details>
+
     <div class="row">
       <button type="submit" id="a_go">Add movement</button>
     </div>
@@ -164,10 +170,8 @@
   </form>
 
   <h2>Yours<span class="gcount" id="mcount"></span></h2>
-  <p class="hint">Movements you have added from a link. They are drawn before the defaults
-  whenever one of them fits the slot, and they are stored in this browser only. The movements
-  the builder ships with are written out on <a href="../movements/">the movement library</a>
-  page.</p>
+  <p class="hint">Yours are drawn first. The rest are on
+  <a href="../movements/">the movement library</a> page.</p>
 
   <div id="mine">
     <p class="hint">Nothing added yet. Anything you add here is drawn ahead of the default
@@ -177,10 +181,15 @@
   <hr>
 
   <h2>Shared<span class="gcount" id="scount"></span></h2>
-  <p class="hint">Links other people have added, for the movements the builder already
-  knows. Nothing here touches your session, and nothing here is drawn into a plan &mdash;
-  it is a shelf of references, not a library of yours. Anything unsafe can be taken down
-  by anyone, from the entry itself.</p>
+  <p class="hint">A shelf of references, not a library of yours.</p>
+
+  <details class="how">
+    <summary>How this works</summary>
+    <p class="hint">Links other people have added, for movements the builder already knows.
+    Nothing here touches your session and nothing here is drawn into a plan. Anything unsafe
+    can be taken down by anyone, from the entry itself; a dead link or the wrong movement is
+    marked for review and stays up.</p>
+  </details>
 
   <form class="panel" id="share" autocomplete="off">
     <label class="wide">Which movement
@@ -194,9 +203,14 @@
       <input id="s_label" type="text" maxlength="80" spellcheck="false"
              placeholder="the cue at 0:14">
     </label>
-    <p class="hint">YouTube, Instagram, Vimeo and TikTok links. Everything after the
-    address is stripped before it is stored &mdash; share links carry tracking that names
-    whoever copied them.</p>
+    <p class="hint">YouTube, Instagram, Vimeo and TikTok links.</p>
+
+    <details class="how">
+      <summary>What is kept</summary>
+      <p class="hint">Everything after the address is stripped before it is stored &mdash;
+      share links carry tracking that names whoever copied them. What is left is the movement,
+      the link, your note, and nothing about you.</p>
+    </details>
     <div class="row">
       <button type="submit" id="s_go">Share it</button>
     </div>

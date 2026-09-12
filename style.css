@@ -391,6 +391,50 @@ td.num { font: 500 14.5px/1.5 var(--mono); color: var(--ink); white-space: nowra
 .note.readiness strong { color: var(--ink); }
 .note.readiness a { color: var(--ink); }
 
+/* The bar that follows a drawn session. It is the last child of #out, stuck to
+   the bottom of the viewport, so it is there for as long as any of the session
+   is on screen and settles at the end of it — no script decides when it shows.
+   Opaque paper, because the session scrolls underneath it. */
+/* No session drawn, no bar — decided by the markup, not by script. */
+#out[hidden] + .stickbar { display: none; }
+
+.stickbar {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex; align-items: center; gap: var(--s3);
+  min-height: var(--tap);
+  margin: var(--s5) calc(-1 * var(--pad)) 0;
+  padding: var(--s2) var(--pad);
+  padding-bottom: calc(var(--s2) + env(safe-area-inset-bottom));
+  background: var(--paper);
+  border-top: 1px solid var(--line);
+}
+.stickbar .sbsum {
+  flex: 1 1 auto; min-width: 0;
+  font: 400 11px/1.5 var(--mono);
+  letter-spacing: .06em; text-transform: uppercase;
+  color: var(--prose-2);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* The same black pill as everywhere else, at the tap minimum rather than the
+   54px a full-width button gets. */
+.stickbar button {
+  flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: var(--tap);
+  padding: 0 22px;
+  background: var(--ink);
+  color: var(--card);
+  border: 0;
+  border-radius: var(--r-pill);
+  font: 600 13px/1 var(--mono);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.stickbar button:hover { background: #1c1c1c; }
+
 /* ---------- footer ---------- */
 
 footer {
@@ -771,14 +815,14 @@ label.wide textarea:focus, #r_dev:focus {
 #r_paste { min-height: 8rem; font-family: var(--mono); font-size: 13px; }
 #r_note  { min-height: 6.5rem; }
 
-details.trk {
+details.trk, details.how {
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: var(--r-card);
   padding: 0 17px;
   margin: 0 0 var(--s5);
 }
-details.trk > summary {
+details.trk > summary, details.how > summary {
   cursor: pointer;
   min-height: var(--tap);
   display: flex; align-items: center;
@@ -787,11 +831,15 @@ details.trk > summary {
   color: var(--ink);
   list-style: none;
 }
-details.trk > summary::-webkit-details-marker { display: none; }
-details.trk > summary::before { content: "+ "; font-family: var(--mono); margin-right: .4rem; color: var(--grey); }
-details.trk[open] > summary::before { content: "− "; }
-details.trk[open] > summary { border-bottom: 1px solid var(--rule); margin-bottom: var(--s3); }
-details.trk > *:last-child { margin-bottom: var(--s3); }
+details.trk > summary::-webkit-details-marker,
+details.how > summary::-webkit-details-marker { display: none; }
+details.trk > summary::before,
+details.how > summary::before { content: "+ "; font-family: var(--mono); margin-right: .4rem; color: var(--grey); }
+details.trk[open] > summary::before,
+details.how[open] > summary::before { content: "− "; }
+details.trk[open] > summary,
+details.how[open] > summary { border-bottom: 1px solid var(--rule); margin-bottom: var(--s3); }
+details.trk > *:last-child, details.how > *:last-child { margin-bottom: var(--s3); }
 
 /* ---------- set tables ---------- */
 
