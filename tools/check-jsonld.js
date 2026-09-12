@@ -43,6 +43,11 @@ const VOCAB = {
     'additionalProperty', 'activeIngredient', 'nonProprietaryName', 'legalStatus',
     'maximumIntake', 'recommendedIntake', 'safetyConsideration', 'targetPopulation',
     'mechanismOfAction', 'proprietaryName', 'isProprietary', 'dosageForm', 'brand']),
+  // ExercisePlan is a CreativeWork and a PhysicalActivity: a defined fitness
+  // activity, as opposed to ExerciseAction, which asserts somebody performed one.
+  ExercisePlan: CREATIVE.concat(['activityDuration', 'activityFrequency', 'additionalVariable',
+                                 'exerciseType', 'intensity', 'repetitions', 'restPeriods',
+                                 'workload']),
   Thing: THING,
 };
 
@@ -56,12 +61,14 @@ const REQUIRED = {
   WebSite: ['name', 'url'],
   PropertyValue: ['name', 'value'],
   DietarySupplement: ['name'],
+  ExercisePlan: ['name'],
   ImageObject: ['url'],
 };
 
 const PAGES = ['index.html', 'builder/index.html', 'sessions/index.html', 'videos/index.html',
-               'training/index.html', 'nutrition/index.html', 'supplements/index.html',
-               'travel/index.html', 'privacy/index.html', 'private/index.html'];
+               'movements/index.html', 'training/index.html', 'nutrition/index.html',
+               'supplements/index.html', 'travel/index.html', 'privacy/index.html',
+               'private/index.html'];
 
 let errors = 0, blocks = 0, nodes = 0;
 // per page, not across the site: each page has to resolve its own references
