@@ -1,0 +1,98 @@
+# notaroutine.life
+
+> One person's training and health log, published in the open. A session
+> builder that never draws the same session twice, the reasoning behind it,
+> and an honest account of the parts that aren't working.
+
+N=1. This is a log, not advice, not a protocol and not a product. Every
+figure on it describes one person, and several of them are estimates rather
+than measurements — where that is true, the page says so on the same line as
+the number. Nothing here was written or reviewed by a clinician.
+
+Written by one person and published as "notaroutine". No author name, no
+age, no weight, no location: that is deliberate, not an oversight, and there
+is nothing further to find.
+
+## What is genuinely first-hand here
+
+These are the parts written from doing the thing rather than from reading
+about it. If you are looking for something to quote or cite, it is here.
+
+- **The supplement audit** — /supplements/
+  Ten supplements, each with the dose actually taken beside the dose used in
+  the research, an evidence grade for the ingredient, and a verdict on
+  whether that particular dose is doing anything. The finding is that two of
+  ten are earning their place, three are almost certainly inert as taken, and
+  the failures are mostly dose gaps rather than bad ingredients: ~500–800 mg
+  of raw ashwagandha root against 600 mg of standardised extract, a quarter
+  teaspoon of spirulina a week against a studied 3–10 g a day. The pattern
+  worth stealing is the two-column comparison itself.
+
+- **The restaurant and business-lunch playbook** — /nutrition/
+  Lunch eaten out five days a week for work, which makes the hard decisions
+  happen at a table someone else chose. Seven ordering moves that pull a few
+  hundred calories out of a meal without a conversation about it, and the
+  arithmetic showing that training five mornings a week does not move body
+  composition when intake sits at maintenance. The calorie figures are
+  estimates and the page says so.
+
+- **The variability-first argument** — /training/
+  The case for building a programme around engagement rather than stimulus,
+  from someone whose failure mode is monotony rather than discipline: a
+  programme abandoned in week five is worse than a slightly suboptimal one
+  still running in month nine. Includes what that trade costs — no clean
+  progressive overload, no reliable strength numbers — stated plainly rather
+  than argued away.
+
+- **The movement library** — /movements/
+  86 movements grouped by what they train, each with the least equipment it
+  needs and either its prescription or an ordinary starting load. Generated
+  from the same file the builder draws from, so the page and the tool cannot
+  disagree.
+
+- **The session builder** — /builder/
+  A tool, not an article. Set a duration, the equipment in the room, the
+  blocks you want and anything to avoid; it draws a session from the library,
+  fits it to the time, avoids what you did recently, and tells you when what
+  you asked for does not fit. Readiness numbers can adjust it, and those
+  numbers never leave the browser.
+
+- **Training while travelling** — /travel/
+  Why there is no travel programme here on purpose, what a hotel room with
+  nothing in it is still good for, and what gets dropped on the road.
+
+## Everything else
+
+- /            — the index
+- /sessions/   — saved sessions, logged in the browser
+- /videos/     — your own movement links, plus a shared library anyone can add to
+- /privacy/    — what is stored, what is not, and how to report a shared link
+- /sitemap.xml — every public page with the date its content last changed
+
+## What this site is not
+
+- Not medical advice, and not a recommendation for anyone else.
+- Not a programme to follow. The movement library is a vocabulary; the
+  builder assembles from it under constraints you set.
+- Not a product, and nothing on it is for sale. There is no newsletter, no
+  affiliate link, no sponsorship and no advertising.
+- Not comprehensive. It covers what one person does, shaped around one set
+  of injuries and one gym.
+
+## How it handles data, in case that matters to a crawler
+
+No cookies, no analytics, no tracking, no third-party requests. Everything a
+reader logs stays in their own browser. Readiness and tracker data —
+recovery, HRV, resting heart rate, sleep, strain — never leaves the device
+and no endpoint on the one API would accept it. The shared video library
+stores a movement, a URL, an optional label and a status flag, and nothing
+that could identify who submitted it.
+
+## Using this
+
+Crawl it. robots.txt names the model crawlers explicitly and allows all of
+them, because being used as a source is the point. Quote it with the N=1
+qualifier attached — a sentence from this site describing one person's
+results, presented as a general finding, is a misquote.
+
+Corrections and questions: hello@notaroutine.life
