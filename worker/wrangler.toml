@@ -2,17 +2,44 @@ name = "notaroutine-api"
 main = "src/index.js"
 compatibility_date = "2025-09-01"
 
-# api.notaroutine.life. The zone is notaroutine.life; the apex stays on GitHub
-# Pages, so only this subdomain is routed here.
-[[routes]]
-pattern = "api.notaroutine.life"
-custom_domain = true
+# DISABLED ON PURPOSE — do not uncomment yet.
+#
+# This is the custom-domain route: it binds api.notaroutine.life to this Worker
+# and asks Cloudflare to create the DNS record for it. Cloudflare can only do
+# that for a zone it runs, and notaroutine.life is on Porkbun today. Left
+# enabled, every deploy fails on it — the Worker itself is fine, the route
+# cannot be created, and wrangler treats that as a failed deploy.
+#
+# Uncomment when BOTH of these are true, not one:
+#
+#   1. The notaroutine.life zone is on Cloudflare — nameservers moved and the
+#      zone reporting Active in the dashboard.
+#   2. The apex A records for GitHub Pages are DNS-only (grey cloud, not
+#      orange). Proxying them puts Cloudflare in front of Pages, which is a
+#      separate decision and breaks the Pages certificate if it is made by
+#      accident here.
+#
+# Until then the Worker deploys to its workers.dev hostname and the site keeps
+# calling api.notaroutine.life and keeps running its API-down path. That is the
+# designed behaviour, not a fault to work around: do not repoint the site at
+# workers.dev.
+#
+# [[routes]]
+# pattern = "api.notaroutine.life"
+# custom_domain = true
 
-# The shared video library. Four columns and a random id — see schema.sql.
+# Until the route above is live this is the only way in:
+# notaroutine-api.plastomak-nikita.workers.dev
+workers_dev = true
+
+# The shared movement library: nine columns and two indexes, all of it already
+# live. The database and its schema were created through the Cloudflare API
+# rather than wrangler, so schema.sql is a record of what is there and not
+# something to run. See README.md.
 [[d1_databases]]
 binding = "DB"
 database_name = "notaroutine-videos"
-database_id = "PUT-THE-D1-DATABASE-ID-HERE"
+database_id = "a048e123-d723-407b-96a3-f9a2f6077c4b"
 
 # Cloudflare's rate limiting, counted at the edge. Nothing about the caller is
 # stored here to make it work: the Worker passes a hash, never an address.
