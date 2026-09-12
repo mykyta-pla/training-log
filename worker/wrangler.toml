@@ -8,11 +8,13 @@ compatibility_date = "2025-09-01"
 pattern = "api.notaroutine.life"
 custom_domain = true
 
-# The shared video library. Four columns and a random id — see schema.sql.
+# The shared movement library. The database and its schema already exist —
+# created through the Cloudflare API rather than wrangler — so schema.sql is a
+# record of what is there, not something to run. See README.md.
 [[d1_databases]]
 binding = "DB"
-database_name = "notaroutine-videos"
-database_id = "PUT-THE-D1-DATABASE-ID-HERE"
+database_name = "notaroutine"
+database_id = "b3b94b95-f4d0-4bc7-b60e-ff0134236092"
 
 # Cloudflare's rate limiting, counted at the edge. Nothing about the caller is
 # stored here to make it work: the Worker passes a hash, never an address.
