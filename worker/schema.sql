@@ -1,20 +1,23 @@
--- The shared video library. This is the entire schema, and the rule in
--- CLAUDE.md is that it stays this size: movement, url, optional label, status,
--- plus a random id so a report can name a row.
+-- The shared movement library. Every column describes the movement; none
+-- describes who sent it. That is the rule in CLAUDE.md and it is the reason
+-- there is no created_at, no submitter and no address here.
 --
--- Deliberately absent: any column for who submitted it, when, from where, or
--- with what. There is no created_at. Ordering is by movement then by the
--- random id, so the table cannot be read back as a submission timeline.
+-- It is the same shape as the library the site ships with in movements.js, so
+-- anything stored here can be drawn by the builder without translation.
 
 CREATE TABLE IF NOT EXISTS videos (
-  id       TEXT PRIMARY KEY,          -- crypto.randomUUID, no order, no origin
-  movement TEXT NOT NULL,             -- the movement it demonstrates
-  url      TEXT NOT NULL,             -- allowlisted host, query stripped
-  label    TEXT,                      -- optional, 80 chars, e.g. "the cue at 0:14"
+  id        TEXT PRIMARY KEY,          -- crypto.randomUUID, no order, no origin
+  movement  TEXT NOT NULL,             -- what it is called
+  url       TEXT NOT NULL,             -- allowlisted host, query stripped
+  pattern   TEXT NOT NULL,             -- m_shoulder … fin: what it trains
+  equip     INTEGER NOT NULL,          -- 0 bodyweight, 1 band, 2 dumbbells, 3 full gym
+  avoid     TEXT NOT NULL DEFAULT '',  -- comma-separated, from a fixed list of five
+  technique TEXT NOT NULL,             -- s | p | c — SELF-REPORTED, verified by nobody
+  dose      TEXT,                      -- optional prescription, e.g. "8 each side"
   -- 'ok'                clean
-  -- 'flagged:<reason>'   reported broken, wrong or spam — still served
-  -- 'hidden:unsafe'      reported unsafe — not served, waiting on review
-  status   TEXT NOT NULL DEFAULT 'ok'
+  -- 'flagged:<reason>'  reported broken, wrong or spam — still served
+  -- 'hidden:unsafe'     reported unsafe — not served, waiting on review
+  status    TEXT NOT NULL DEFAULT 'ok'
 );
 
 -- GET /videos is WHERE status NOT LIKE 'hidden:%' ORDER BY movement, id.

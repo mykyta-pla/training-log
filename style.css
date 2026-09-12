@@ -435,6 +435,37 @@ td.num { font: 500 14.5px/1.5 var(--mono); color: var(--ink); white-space: nowra
 }
 .stickbar button:hover { background: #1c1c1c; }
 
+/* The technique rating: the third axis, beside equipment and avoid tags. Coached is
+   the only one that gets the signal colour, because it is the only one that is a
+   warning rather than a description. */
+.tech {
+  display: inline-flex; align-items: baseline; gap: 6px;
+  margin-top: 3px;
+  font: 500 10.5px/1.5 var(--mono);
+  letter-spacing: .12em; text-transform: uppercase;
+  color: var(--grey);
+}
+.tech.t-c { color: var(--signal); }
+.tech.t-p { color: var(--prose-2); }
+.tech .unver {
+  font-weight: 400; letter-spacing: .06em; text-transform: none;
+  color: var(--faint);
+}
+
+/* Chips that carry a label and a line of plain English under it, stacked full
+   width — for a choice you should read before making. */
+.chips.stack { flex-direction: column; align-items: stretch; }
+.chips.stack .chip.tall {
+  display: block;
+  min-height: var(--tap);
+  padding: 11px 18px;
+  text-align: left;
+  white-space: normal;
+}
+.chip.tall b { display: block; font-weight: 600; font-size: 14px; letter-spacing: -.01em; }
+.chip.tall span { display: block; margin-top: 1px; font-size: 12.5px; color: var(--prose-2); }
+.chip.tall.on span { color: var(--line); }
+
 /* ---------- footer ---------- */
 
 footer {

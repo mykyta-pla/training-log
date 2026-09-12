@@ -29,13 +29,41 @@ audience. The N=1 voice does not change.
 - Every page must work fully with that API unreachable. The shared
   list degrades to empty and says so; nothing else on the site
   notices. Never block rendering on a fetch.
-- The shared library stores four fields per entry and nothing else,
-  ever: movement, url, optional label, status flag. Plus a random
-  row id, because a report has to be able to name an entry — a
-  crypto.randomUUID, carrying no order and no origin. No submitter,
-  no IP, no timestamp, no user agent, no session id, no identifier
-  of any kind — nothing that could tie an entry back to a person, or
-  two entries to each other.
+- The shared library stores a movement and nothing else. The movement
+  is: name, url, pattern, equipment level, avoid tags, technique
+  rating, optional prescription, status flag — the same shape as the
+  library in movements.js, so anything shared can be drawn without
+  translation — plus a random row id, because a report has to be able
+  to name an entry: a crypto.randomUUID, carrying no order and no
+  origin. Every one of those describes the movement. Not one describes
+  who sent it. No submitter, no IP, no timestamp, no user agent, no
+  session id, no identifier of any kind — nothing that could tie an
+  entry back to a person, or two entries to each other. A field that
+  describes a person does not go in, whatever it would buy.
+- Named so there is nothing to interpret: no IP address, no user
+  agent, no device or browser information, no locale or language, no
+  timestamp of any kind, no session or visitor identifier, and no
+  free-text field belonging to the submitter — no note, no comment,
+  no reason in prose. Not hashed, not truncated, not bucketed, not
+  "derived from". The two free-text fields that do exist, the
+  movement's name and its prescription, describe the movement, and
+  are length-capped and stripped of control characters. This list is
+  not exhaustive and is not an invitation to find the gaps in it.
+- Adding a column to the shared library needs the owner's explicit
+  approval, in the task that asks for it. An agent may propose a
+  column, and must then stop and wait. It may not add one, and may
+  not widen an existing column to carry something a new column would
+  have held.
+- Every movement carries a technique rating: s straightforward, p
+  practised, c coached. It rates the skill the movement demands, not
+  how hard it feels. On anything from the shared library it is
+  self-reported and must be labelled unverified wherever it is shown.
+- The builder draws in three tiers and never mixes them: the movements
+  you added, then the ones this site ships with, then — only if you
+  switched them on, and the switch is off by default — the ones other
+  people shared. A stranger's movement never lands in a prescribed
+  session unless it was asked for. This is a safety line, not a
+  preference.
 - Readiness and tracker data — recovery, HRV, resting heart rate,
   sleep, sleep performance, strain, and the free-text notes — never
   leaves the device. Not in a request body, not in a synced blob,

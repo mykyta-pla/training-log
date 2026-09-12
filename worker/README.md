@@ -11,11 +11,18 @@ only dependency.
 
 | | | |
 |---|---|---|
-| `GET /videos` | every entry that isn't flagged | edge-cached 60s |
-| `POST /videos` | `{movement, url, label?}` | no auth, rate limited |
+| `GET /videos` | everything not hidden | edge-cached 60s |
+| `POST /videos` | `{movement, url, pattern, equip, avoid[], technique, dose?}` | no auth, rate limited |
 | `POST /report` | `{id, reason}` | hides the entry immediately |
 
 `reason` is one of `unsafe`, `broken`, `wrong`, `spam`. Anything else is a 400.
+
+`pattern` is one of the eleven the builder uses, `equip` is 0–3, `avoid` comes
+from `deepknee|overhead|jump|floor|grip`, and `technique` is `s`, `p` or `c` —
+straightforward, practised, coached. A submission that would not fit the builder
+is refused rather than stored. The technique rating is **self-reported**: the
+Worker serves it with `techniqueVerified: false` and the site labels it that way
+everywhere it appears.
 Links must point at youtube.com, youtu.be, instagram.com, vimeo.com or
 tiktok.com — exact host or a subdomain of it, so `m.youtube.com` passes and
 `youtube.com.example.net` does not.
@@ -85,7 +92,8 @@ submission.
 
 ## What is not stored
 
-No submitter, no IP, no timestamp, no user agent, no session id. There is no
+No submitter, no IP, no timestamp, no user agent, no session id. Every column
+describes the movement; none describes the person who sent it. There is no
 `created_at` column and rows are ordered by movement then by a random UUID, so
 the table cannot be read back as a timeline of who was here when.
 

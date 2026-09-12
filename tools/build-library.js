@@ -26,6 +26,7 @@ vm.runInContext(fs.readFileSync('movements.js', 'utf8') +
 const {LIB, GROUPS, START_KG} = sandbox.__lib;
 
 const KIT = ['bodyweight alone', 'a band', 'dumbbells', 'a full gym'];
+const TECH = {s: 'Straightforward', p: 'Practised', c: 'Coached'};
 const AVOID = {
   deepknee: 'deep knee flexion', overhead: 'overhead loading',
   jump: 'jumping and impact', floor: 'floor work', grip: 'heavy grip',
@@ -48,7 +49,9 @@ const sentence = x => {
     (held.length ? `. Held back when you ask it to avoid ${held.join(' or ')}` : '') + '.';
 };
 
-const line = x => `    <li><strong>${ent(x.n)}</strong> &mdash; ${ent(sentence(x))}</li>`;
+const line = x =>
+  `    <li><strong>${ent(x.n)}</strong> &mdash; ${ent(sentence(x))}` +
+  `\n        <span class="tech t-${x.t}">${TECH[x.t]}</span></li>`;
 
 // ExercisePlan, not ExerciseAction. An Action asserts that something was or will
 // be performed, by an agent, at a time — none of which is true of a menu nobody
@@ -65,6 +68,7 @@ const plan = (x, label) => {
   else if (kg === 'BW') extra.push('Starting load: bodyweight');
   const held = (x.a || []).map(t => AVOID[t]).filter(Boolean);
   if (held.length) extra.push(`Held back when avoiding: ${held.join(', ')}`);
+  extra.push(`Technique: ${TECH[x.t]}`);
   return {
     '@type': 'ExercisePlan',
     name: x.n,
@@ -72,6 +76,8 @@ const plan = (x, label) => {
     // the heading that sits above it on the page
     description: `${x.n} — needs ${sentence(x)}`,
     exerciseType: label,
+    // technique rides in additionalVariable, not in intensity: schema.org means
+    // physical intensity by that, and this is skill. Wrong word, no thanks.
     additionalVariable: extra,
   };
 };

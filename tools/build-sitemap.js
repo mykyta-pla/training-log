@@ -14,14 +14,14 @@ const SITE = 'https://notaroutine.life';
 const PAGES = [
   ['/',             '2026-09-11', '1.0', 'monthly'],
   ['/training/',    '2026-09-11', '0.9', 'monthly'],
-  ['/movements/',   '2026-09-11', '0.9', 'monthly'],
+  ['/movements/',   '2026-09-12', '0.9', 'monthly'],
   ['/supplements/', '2026-09-09', '0.9', 'monthly'],
   ['/nutrition/',   '2026-09-09', '0.8', 'monthly'],
   ['/travel/',      '2026-09-09', '0.7', 'monthly'],
-  ['/builder/',     '2026-09-11', '0.7', 'monthly'],
-  ['/videos/',      '2026-09-11', '0.5', 'monthly'],
-  ['/sessions/',    '2026-09-11', '0.4', 'monthly'],
-  ['/privacy/',     '2026-09-11', '0.3', 'yearly'],
+  ['/builder/',     '2026-09-12', '0.7', 'monthly'],
+  ['/videos/',      '2026-09-12', '0.5', 'monthly'],
+  ['/sessions/',    '2026-09-12', '0.4', 'monthly'],
+  ['/privacy/',     '2026-09-12', '0.3', 'yearly'],
 ];
 
 // Every directory with an index.html is public except these.
