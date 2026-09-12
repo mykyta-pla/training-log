@@ -31,11 +31,14 @@ function fakeDb(rows = []) {
       if (/^SELECT id, movement/.test(sql))
         return {results: db.rows.filter(r => !r.status.startsWith('hidden:'))
           .sort((a, b) => a.movement.localeCompare(b.movement) || a.id.localeCompare(b.id))
-          .map(({id, movement, url, label}) => ({id, movement, url, label}))};
+          .map(({id, movement, url, pattern, equip, avoid, technique, dose}) =>
+            ({id, movement, url, pattern, equip, avoid, technique, dose}))};
       if (/^SELECT id FROM videos WHERE movement/.test(sql))
         return db.rows.find(r => r.movement === args[0] && r.url === args[1]) || null;
       if (/^INSERT/.test(sql)) {
-        db.rows.push({id: args[0], movement: args[1], url: args[2], label: args[3], status: 'ok'});
+        db.rows.push({id: args[0], movement: args[1], url: args[2], pattern: args[3],
+                      equip: args[4], avoid: args[5], technique: args[6], dose: args[7],
+                      status: 'ok'});
         return {meta: {changes: 1}};
       }
       if (/^UPDATE/.test(sql)) {
@@ -73,25 +76,82 @@ const call = (method, path, {body, origin = SITE, env} = {}) => worker.fetch(
 
 const fresh = rows => { globalThis.caches.default._m.clear(); return {DB: fakeDb(rows)}; };
 
+// a complete, valid submission; tests override one field at a time
+const MOVE = {movement: 'Half-kneeling cable row', url: 'https://youtu.be/aaa',
+              pattern: 'pull', equip: 2, avoid: ['grip'], technique: 'p',
+              dose: '8 each side'};
+const row = (over = {}) => ({id: 'x', movement: 'Row', url: 'https://youtu.be/a', pattern: 'pull',
+                             equip: 2, avoid: '', technique: 's', dose: null,
+                             status: 'ok', ...over});
+
 /* ----------------------------------------------------------- the tests -- */
 
 test('GET /videos serves the flagged and withholds the hidden', async () => {
   const env = fresh([
-    {id: 'b', movement: 'Goblet squat', url: 'https://youtu.be/aaa', label: null, status: 'ok'},
-    {id: 'a', movement: 'Barbell row',  url: 'https://youtu.be/bbb', label: 'cue at 0:14', status: 'ok'},
-    {id: 'c', movement: 'Barbell row',  url: 'https://youtu.be/ccc', label: null, status: 'flagged:spam'},
-    {id: 'd', movement: 'Barbell row',  url: 'https://youtu.be/ddd', label: null, status: 'hidden:unsafe'},
+    row({id: 'b', movement: 'Goblet squat', url: 'https://youtu.be/aaa'}),
+    row({id: 'a', movement: 'Barbell row',  url: 'https://youtu.be/bbb'}),
+    row({id: 'c', movement: 'Barbell row',  url: 'https://youtu.be/ccc', status: 'flagged:spam'}),
+    row({id: 'd', movement: 'Barbell row',  url: 'https://youtu.be/ddd', status: 'hidden:unsafe'}),
   ]);
   const res = await call('GET', '/videos', {env});
   const {videos} = await res.json();
   assert.equal(res.status, 200);
   assert.deepEqual(videos.map(v => v.id), ['a', 'c', 'b']);
   assert.equal(res.headers.get('Cache-Control'), 'public, max-age=60');
-  assert.deepEqual(Object.keys(videos[0]).sort(), ['id', 'label', 'movement', 'url']);
+  assert.deepEqual(Object.keys(videos[0]).sort(),
+    ['avoid', 'dose', 'equip', 'id', 'movement', 'pattern', 'technique', 'techniqueVerified', 'url']);
+});
+
+test('a technique rating is served as unverified, always', async () => {
+  const env = fresh([row({technique: 'c'})]);
+  const {videos} = await (await call('GET', '/videos', {env})).json();
+  assert.equal(videos[0].technique, 'c');
+  assert.equal(videos[0].techniqueVerified, false);
+});
+
+test('POST /videos stores the whole movement, and nothing about the sender', async () => {
+  const env = fresh([]);
+  const res = await call('POST', '/videos', {env, body: MOVE});
+  assert.equal(res.status, 201);
+  const r = env.DB.rows[0];
+  assert.deepEqual(Object.keys(r).sort(),
+    ['avoid', 'dose', 'equip', 'id', 'movement', 'pattern', 'status', 'technique', 'url']);
+  assert.equal(r.pattern, 'pull');
+  assert.equal(r.equip, 2);
+  assert.equal(r.avoid, 'grip');
+  assert.equal(r.technique, 'p');
+  assert.equal(r.dose, '8 each side');
+});
+
+test('POST /videos refuses a movement the builder could not draw', async () => {
+  const bad = [
+    [{pattern: 'legs'}, /Pattern must be one of/],
+    [{pattern: ''}, /Pattern must be one of/],
+    [{equip: 4}, /Equipment must be/],
+    [{equip: -1}, /Equipment must be/],
+    [{equip: 'lots'}, /Equipment must be/],
+    [{avoid: ['sunlight']}, /Avoid tags must come from/],
+    [{technique: 'expert'}, /technique/],
+    [{technique: ''}, /technique/],
+    [{dose: 'x'.repeat(61)}, /prescription is too long/],
+  ];
+  for (const [over, expect] of bad) {
+    const env = fresh([]);
+    const res = await call('POST', '/videos', {env, body: {...MOVE, ...over}});
+    assert.equal(res.status, 400, JSON.stringify(over) + ' should be refused');
+    assert.match((await res.json()).error, expect);
+    assert.equal(env.DB.rows.length, 0);
+  }
+});
+
+test('duplicate avoid tags are stored once', async () => {
+  const env = fresh([]);
+  await call('POST', '/videos', {env, body: {...MOVE, avoid: ['grip', 'grip', 'floor']}});
+  assert.equal(env.DB.rows[0].avoid, 'grip,floor');
 });
 
 test('GET /videos is served from the edge cache the second time', async () => {
-  const env = fresh([{id: 'a', movement: 'Row', url: 'https://youtu.be/a', label: null, status: 'ok'}]);
+  const env = fresh([row({id: 'a'})]);
   await call('GET', '/videos', {env});
   const before = env.DB.queries.length;
   const res = await call('GET', '/videos', {env});
@@ -123,7 +183,7 @@ test('POST /videos accepts the five allowlisted hosts and their subdomains', asy
     'https://vm.tiktok.com/ZMabcdef/',
   ]) {
     const env = fresh([]);
-    const res = await call('POST', '/videos', {env, body: {movement: 'Goblet squat', url}});
+    const res = await call('POST', '/videos', {env, body: {...MOVE, url}});
     assert.equal(res.status, 201, url + ' should be accepted');
   }
 });
@@ -138,7 +198,7 @@ test('POST /videos rejects everything else with a message that says what it take
     'not a url at all',
   ]) {
     const env = fresh([]);
-    const res = await call('POST', '/videos', {env, body: {movement: 'Goblet squat', url}});
+    const res = await call('POST', '/videos', {env, body: {...MOVE, url}});
     assert.equal(res.status, 400, url + ' should be rejected');
     assert.match((await res.json()).error, /YouTube/);
     assert.equal(env.DB.rows.length, 0);
@@ -147,11 +207,11 @@ test('POST /videos rejects everything else with a message that says what it take
 
 test('tracking parameters never reach the table', async () => {
   const env = fresh([]);
-  await call('POST', '/videos', {env, body: {
+  await call('POST', '/videos', {env, body: {...MOVE,
     movement: 'Barbell row',
     url: 'https://www.instagram.com/reel/abc/?igshid=SOMEONES_SHARE_ID&utm_source=ig_web',
   }});
-  await call('POST', '/videos', {env, body: {
+  await call('POST', '/videos', {env, body: {...MOVE,
     movement: 'Goblet squat',
     url: 'http://www.youtube.com/watch?v=abc123&t=14s&si=ANOTHER_SHARE_ID&list=WATCH_HISTORY',
   }});
@@ -159,19 +219,18 @@ test('tracking parameters never reach the table', async () => {
   assert.equal(env.DB.rows[1].url, 'https://youtube.com/watch?v=abc123&t=14s');
 });
 
-test('a row holds four fields and an id, and the id is not a sequence', async () => {
+test('the id is a random UUID, not a sequence', async () => {
   const env = fresh([]);
-  await call('POST', '/videos', {env, body: {movement: 'Goblet squat', url: 'https://youtu.be/a', label: 'knees out'}});
-  const row = env.DB.rows[0];
-  assert.deepEqual(Object.keys(row).sort(), ['id', 'label', 'movement', 'status', 'url']);
-  assert.match(row.id, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
-  assert.equal(row.status, 'ok');
+  await call('POST', '/videos', {env, body: MOVE});
+  const r = env.DB.rows[0];
+  assert.match(r.id, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  assert.equal(r.status, 'ok');
 });
 
 test('the same link for the same movement is stored once', async () => {
   const env = fresh([]);
-  const first = await call('POST', '/videos', {env, body: {movement: 'Row', url: 'https://youtu.be/a'}});
-  const again = await call('POST', '/videos', {env, body: {movement: 'Row', url: 'https://youtu.be/a?utm_source=x'}});
+  const first = await call('POST', '/videos', {env, body: {...MOVE, url: 'https://youtu.be/a'}});
+  const again = await call('POST', '/videos', {env, body: {...MOVE, url: 'https://youtu.be/a?utm_source=x'}});
   assert.equal(first.status, 201);
   assert.equal(again.status, 200);
   assert.equal((await again.json()).duplicate, true);
@@ -179,7 +238,7 @@ test('the same link for the same movement is stored once', async () => {
 });
 
 test('POST /report takes only the four known reasons', async () => {
-  const env = fresh([{id: 'a', movement: 'Row', url: 'https://youtu.be/a', label: null, status: 'ok'}]);
+  const env = fresh([row({id: 'a'})]);
   for (const reason of ['i just do not like it', 'not-a-movement', 'wrong-movement', '', 'UNSAFE']) {
     const bad = await call('POST', '/report', {env, body: {id: 'a', reason}});
     assert.equal(bad.status, 400, JSON.stringify(reason) + ' should be refused');
@@ -188,7 +247,7 @@ test('POST /report takes only the four known reasons', async () => {
 });
 
 test('unsafe hides on one report', async () => {
-  const env = fresh([{id: 'a', movement: 'Row', url: 'https://youtu.be/a', label: null, status: 'ok'}]);
+  const env = fresh([row({id: 'a'})]);
   const res = await call('POST', '/report', {env, body: {id: 'a', reason: 'unsafe'}});
   assert.deepEqual(await res.json(), {ok: true, hidden: true, flagged: false});
   assert.equal(env.DB.rows[0].status, 'hidden:unsafe');
@@ -197,7 +256,7 @@ test('unsafe hides on one report', async () => {
 
 test('broken, wrong and spam flag the row and leave it visible', async () => {
   for (const reason of ['broken', 'wrong', 'spam']) {
-    const env = fresh([{id: 'a', movement: 'Row', url: 'https://youtu.be/a', label: null, status: 'ok'}]);
+    const env = fresh([row({id: 'a'})]);
     const res = await call('POST', '/report', {env, body: {id: 'a', reason}});
     assert.deepEqual(await res.json(), {ok: true, hidden: false, flagged: true});
     assert.equal(env.DB.rows[0].status, 'flagged:' + reason);
@@ -207,7 +266,7 @@ test('broken, wrong and spam flag the row and leave it visible', async () => {
 });
 
 test('a second report cannot overwrite the first reason, and unsafe still wins', async () => {
-  const env = fresh([{id: 'a', movement: 'Row', url: 'https://youtu.be/a', label: null, status: 'ok'}]);
+  const env = fresh([row({id: 'a'})]);
   await call('POST', '/report', {env, body: {id: 'a', reason: 'broken'}});
   const second = await call('POST', '/report', {env, body: {id: 'a', reason: 'spam'}});
   assert.equal((await second.json()).flagged, false);
@@ -223,7 +282,7 @@ test('a second report cannot overwrite the first reason, and unsafe still wins',
 });
 
 test('a report writes no free text anywhere', async () => {
-  const env = fresh([{id: 'a', movement: 'Row', url: 'https://youtu.be/a', label: null, status: 'ok'}]);
+  const env = fresh([row({id: 'a'})]);
   await call('POST', '/report', {env, body: {
     id: 'a', reason: 'spam', note: 'my name is X and my email is y@z', email: 'y@z',
   }});
@@ -262,7 +321,7 @@ test('the rate limiter is handed a hash, never an address', async () => {
   const env = fresh([]);
   const seen = [];
   env.SUBMIT_LIMIT = {limit: async ({key}) => { seen.push(key); return {success: true}; }};
-  await call('POST', '/videos', {env, body: {movement: 'Row', url: 'https://youtu.be/a'}});
+  await call('POST', '/videos', {env, body: {...MOVE, url: 'https://youtu.be/a'}});
   assert.equal(seen.length, 1);
   assert.match(seen[0], /^[0-9a-f]{32}$/);
   assert.equal(seen[0].includes('198.51.100'), false);
@@ -271,7 +330,7 @@ test('the rate limiter is handed a hash, never an address', async () => {
 test('over the limit, nothing is written', async () => {
   const env = fresh([]);
   env.SUBMIT_LIMIT = {limit: async () => ({success: false})};
-  const res = await call('POST', '/videos', {env, body: {movement: 'Row', url: 'https://youtu.be/a'}});
+  const res = await call('POST', '/videos', {env, body: {...MOVE, url: 'https://youtu.be/a'}});
   assert.equal(res.status, 429);
   assert.equal(env.DB.rows.length, 0);
 });

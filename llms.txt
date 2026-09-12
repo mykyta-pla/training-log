@@ -46,9 +46,13 @@ about it. If you are looking for something to quote or cite, it is here.
 
 - **The movement library** — /movements/
   86 movements grouped by what they train, each with the least equipment it
-  needs and either its prescription or an ordinary starting load. Generated
-  from the same file the builder draws from, so the page and the tool cannot
-  disagree.
+  needs, either its prescription or an ordinary starting load, and a technique
+  rating: straightforward (pick it up and do it), practised (you should have
+  done it before), coached (learn it from a person, not a video). Seven are
+  rated coached. The rating is about the skill a movement demands rather than
+  how hard it feels, which is a distinction most exercise databases do not
+  make. Generated from the same file the builder draws from, so the page and
+  the tool cannot disagree.
 
 - **The session builder** — /builder/
   A tool, not an article. Set a duration, the equipment in the room, the
@@ -65,7 +69,10 @@ about it. If you are looking for something to quote or cite, it is here.
 
 - /            — the index
 - /sessions/   — saved sessions, logged in the browser
-- /videos/     — your own movement links, plus a shared library anyone can add to
+- /videos/     — add a movement once: it enters your own library immediately and
+                 goes to the shared library for everyone. Shared movements are
+                 drawn into a session only if the reader switches them on, and
+                 their technique ratings are self-reported and labelled as such
 - /privacy/    — what is stored, what is not, and how to report a shared link
 - /sitemap.xml — every public page with the date its content last changed
 
@@ -84,9 +91,10 @@ about it. If you are looking for something to quote or cite, it is here.
 No cookies, no analytics, no tracking, no third-party requests. Everything a
 reader logs stays in their own browser. Readiness and tracker data —
 recovery, HRV, resting heart rate, sleep, strain — never leaves the device
-and no endpoint on the one API would accept it. The shared video library
-stores a movement, a URL, an optional label and a status flag, and nothing
-that could identify who submitted it.
+and no endpoint on the one API would accept it. The shared video library stores
+a movement — name, link, what it trains, equipment, avoid tags, a self-reported
+technique rating, an optional prescription and a status flag — and nothing that
+could identify who submitted it.
 
 ## Using this
 

@@ -282,6 +282,13 @@
       <button type="button" class="chip" data-v="grip">Heavy grip</button>
     </div>
 
+    <h2>Where movements come from</h2>
+    <p class="hint">Yours first, then the ones this site ships with. Community movements are
+    unreviewed and their technique ratings are self-reported by whoever sent them.</p>
+    <div class="blk">
+      <label class="tog"><input type="checkbox" id="b_comm"><span>Draw community movements too</span></label>
+    </div>
+
     <h2>Repeats</h2>
     <div class="chips" id="fresh">
       <button type="button" class="chip on" data-v="2">Avoid last 2 sessions</button>
@@ -498,8 +505,11 @@ function savePrefs() {
     blocks: {mob:$('#b_mob').checked, car:$('#b_car').checked, str:$('#b_str').checked,
              core:$('#b_core').checked, fin:$('#b_fin').checked},
   });
+  // movements.js reads this on its own, from any page
+  setUseCommunity($('#b_comm').checked);
 }
 function loadPrefs() {
+  $('#b_comm').checked = useCommunity();
   const p = read(K.prefs, null); if (!p) return;
   ['dur','equip','carvar','finvar','strfmt','fresh'].forEach(k => p[k] && setOne(k, p[k]));
   // strfocus was a single value before it could be combined
@@ -512,7 +522,7 @@ function loadPrefs() {
   [['b_mob','s_mob'],['b_car','s_car'],['b_str','s_str'],['b_fin','s_fin']].forEach(([cb,sub]) =>
     $('#'+sub).classList.toggle('off', !$('#'+cb).checked));
 }
-$('#b_core').addEventListener('change', savePrefs);
+['b_core', 'b_comm'].forEach(id => $('#'+id).addEventListener('change', savePrefs));
 
 /* ============================================================== readiness == */
 
@@ -804,7 +814,8 @@ function build() {
     if (!x) return null;
     used.add(x.n);
     if (rec.has(x.n)) repeated++;
-    return {name:x.n, pattern, detail:x.d, ago: rec.has(x.n) ? rec.get(x.n) : null, ...extra};
+    return {name:x.n, pattern, detail:x.d, t:x.t, community: !!x.community,
+            ago: rec.has(x.n) ? rec.get(x.n) : null, ...extra};
   };
 
   // mobility
@@ -949,6 +960,7 @@ function render(S) {
             <span class="ex">
               <span class="exn">${esc(it.name)}</span>
               <span class="exd">${esc(it.detail)}</span>
+              ${techTag(it)}
               ${it.ago !== null && it.ago !== undefined ? `<span class="ago">${it.ago === 0 ? 'last session' : it.ago === 1 ? '2 sessions ago' : (it.ago+1)+' sessions ago'}</span>` : ''}
               ${prev ? `<span class="prev">last: ${esc(prev.load)}</span>` : ''}
             </span>
@@ -1036,6 +1048,7 @@ $('#out').addEventListener('click', e => {
     const x = pickFresh(pool, rec);
     if (!x) { $('#copystatus').textContent = 'Nothing else available for that slot.'; return; }
     b.items[i] = {...b.items[i], name:x.n, detail:x.d || b.items[i].detail,
+                  t:x.t, community: !!x.community,
                   ago: rec.has(x.n) ? rec.get(x.n) : null};
     render(CURRENT); return;
   }

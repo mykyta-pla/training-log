@@ -136,19 +136,29 @@
 
   <p>The <a href="../videos/">Videos</a> page has a shared library at
   <code>api.notaroutine.life</code>. Your browser asks it for the list when that page
-  opens, and posts to it when you press <strong>Share it</strong> or report an entry.
-  Nothing else on the site talks to it, and every page works normally when it is
-  unreachable &mdash; the shared list goes empty and says so.</p>
+  opens, and posts to it when you add a movement or report one. Adding a movement writes
+  it to your own browser first and sends it second: if the send fails the movement is
+  still yours and the builder still draws it. Nothing else on the site talks to that API,
+  and every page works normally when it is unreachable.</p>
 
-  <p>An entry in that library is five things and nothing else:</p>
+  <p>Movements other people shared are <strong>not drawn into your sessions unless you
+  switch them on</strong> in the builder, and that switch is off until you touch it. When
+  it is on, the list is kept in your browser so a session can still be built with the API
+  down.</p>
+
+  <p>An entry in that library is a movement, and nothing but a movement:</p>
 
   <ul>
-    <li><strong>The movement</strong> it shows, chosen from the list.</li>
-    <li><strong>The link</strong>, which must point at YouTube, Instagram, Vimeo or
-    TikTok. Everything after the address is stripped before it is stored &mdash; share
-    links carry identifiers like <code>igshid</code> and <code>utm_source</code>, and
-    some of those name whoever copied the link.</li>
-    <li><strong>Your note</strong>, if you wrote one.</li>
+    <li><strong>Its name</strong>, and <strong>the link</strong>, which must point at
+    YouTube, Instagram, Vimeo or TikTok. Everything after the address is stripped before
+    it is stored &mdash; share links carry identifiers like <code>igshid</code> and
+    <code>utm_source</code>, and some of those name whoever copied the link.</li>
+    <li><strong>What it trains</strong>, <strong>the least equipment it needs</strong>,
+    and <strong>its avoid tags</strong> from a fixed list of five &mdash; the same fields
+    the builder uses to decide whether a movement fits your session.</li>
+    <li><strong>How much technique it asks for</strong>, said by whoever sent it. It is
+    served as self-reported and shown that way everywhere, because nobody checks it.</li>
+    <li><strong>A prescription</strong>, if one was given.</li>
     <li><strong>Whether it has been reported</strong>, and which of four reasons was
     given. There is no free-text box anywhere in that flow.</li>
     <li><strong>A random id</strong>, so a report can say which entry it means. It is

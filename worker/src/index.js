@@ -2,11 +2,14 @@
  * api.notaroutine.life — the shared video library, and nothing else.
  *
  * GET  /videos   every entry that isn't flagged, edge-cached 60 seconds
- * POST /videos   {movement, url, label?}   no auth, rate limited at the edge
+ * POST /videos   a movement: name, url, pattern, equipment, avoid tags,
+ *                self-reported technique, optional prescription. No auth.
  * POST /report   {id, reason}              'unsafe' hides; the rest flag
  *
- * What a row holds: a random id, a movement name, a URL, an optional label,
- * and a status. That is the whole schema and it stays that way. No submitter,
+ * What a row holds: a random id and the movement — its name, a URL, the pattern
+ * it trains, the least equipment it needs, its avoid tags, a self-reported
+ * technique rating and an optional prescription — plus a status. Every one of
+ * those describes the movement. Not one describes who sent it. No submitter,
  * no IP, no timestamp, no user agent, no headers kept, nothing that could tie
  * a row to a person or two rows to each other. The id is crypto.randomUUID —
  * it carries no order and no origin, and exists only so a report can name
@@ -36,8 +39,17 @@ const HOSTS = ['youtube.com', 'youtu.be', 'instagram.com', 'vimeo.com', 'tiktok.
 const HIDES = 'unsafe';
 const REASONS = ['unsafe', 'broken', 'wrong', 'spam'];
 
+// What a movement may say about itself. Anything outside these lists is a 400:
+// the shared library holds the same shape as the library the site ships with, so
+// a submission that would not fit the builder never gets stored.
+const PATTERNS = ['m_shoulder', 'm_hip', 'm_spine', 'm_neck',
+                  'hinge', 'squat', 'push', 'pull', 'acc', 'core', 'fin'];
+const AVOID = ['deepknee', 'overhead', 'jump', 'floor', 'grip'];
+// straightforward, practised, coached — self-reported, and served as such.
+const TECHNIQUE = ['s', 'p', 'c'];
+
 const MAX_MOVEMENT = 80;
-const MAX_LABEL = 80;
+const MAX_DOSE = 60;
 const MAX_URL = 300;
 const MAX_BODY = 2048;
 
@@ -148,10 +160,17 @@ async function getVideos(request, env, ctx) {
   // ORDER BY movement, id: alphabetical, then by a random id. Ordering by
   // anything else would leak the order things were submitted in.
   const {results} = await env.DB.prepare(
-    "SELECT id, movement, url, label FROM videos WHERE status NOT LIKE 'hidden:%' ORDER BY movement, id"
+    'SELECT id, movement, url, pattern, equip, avoid, technique, dose FROM videos ' +
+    "WHERE status NOT LIKE 'hidden:%' ORDER BY movement, id"
   ).all();
 
-  const body = JSON.stringify({videos: results || []});
+  const videos = (results || []).map(r => ({
+    ...r,
+    avoid: r.avoid ? String(r.avoid).split(',') : [],
+    // said by whoever sent it, checked by nobody
+    techniqueVerified: false,
+  }));
+  const body = JSON.stringify({videos});
   const store = new Response(body, {headers: {
     'Content-Type': 'application/json; charset=utf-8',
     'Cache-Control': `public, max-age=${CACHE_SECONDS}`,
@@ -171,15 +190,31 @@ async function postVideo(request, env, ctx) {
   if (!body) return oops('Send JSON: {movement, url, label}.', 400, request);
 
   const movement = cleanText(body.movement, MAX_MOVEMENT);
-  if (!movement) return oops('Say which movement the video is for.', 400, request);
+  if (!movement) return oops('Give the movement a name.', 400, request);
 
   const url = cleanUrl(body.url);
   if (!url) return oops(
     'That link is not somewhere this library accepts. It takes YouTube, youtu.be, ' +
     'Instagram, Vimeo and TikTok links — nothing else.', 400, request);
 
-  const label = body.label == null || body.label === '' ? null : cleanText(body.label, MAX_LABEL);
-  if (label === null && body.label) return oops('That label is too long — 80 characters.', 400, request);
+  const pattern = cleanText(body.pattern, 20);
+  if (!pattern || !PATTERNS.includes(pattern))
+    return oops('Say what the movement trains. Pattern must be one of: ' + PATTERNS.join(', ') + '.', 400, request);
+
+  const equip = Number(body.equip);
+  if (!Number.isInteger(equip) || equip < 0 || equip > 3)
+    return oops('Equipment must be 0 (bodyweight), 1 (band), 2 (dumbbells) or 3 (full gym).', 400, request);
+
+  const avoid = Array.isArray(body.avoid) ? body.avoid.map(t => cleanText(t, 20)) : [];
+  if (avoid.some(t => !t || !AVOID.includes(t)))
+    return oops('Avoid tags must come from: ' + AVOID.join(', ') + '.', 400, request);
+
+  const technique = cleanText(body.technique, 4);
+  if (!technique || !TECHNIQUE.includes(technique))
+    return oops('Say how much technique it asks for: s, p or c.', 400, request);
+
+  const dose = body.dose == null || body.dose === '' ? null : cleanText(body.dose, MAX_DOSE);
+  if (dose === null && body.dose) return oops('That prescription is too long — 60 characters.', 400, request);
 
   // Same link for the same movement twice is not an error, it is a no-op.
   const dup = await env.DB.prepare(
@@ -189,8 +224,9 @@ async function postVideo(request, env, ctx) {
 
   const id = crypto.randomUUID();
   await env.DB.prepare(
-    "INSERT INTO videos (id, movement, url, label, status) VALUES (?, ?, ?, ?, 'ok')"
-  ).bind(id, movement, url, label).run();
+    'INSERT INTO videos (id, movement, url, pattern, equip, avoid, technique, dose, status) ' +
+    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ok')"
+  ).bind(id, movement, url, pattern, equip, [...new Set(avoid)].join(','), technique, dose).run();
 
   ctx.waitUntil(caches.default.delete(new Request(new URL(request.url).origin + '/videos')));
   return json({ok: true, id}, 201, request);

@@ -101,9 +101,9 @@
 
   <h1>Videos</h1>
   <p class="lede">See a movement worth stealing &mdash; Instagram, YouTube, a coach&rsquo;s page
-  &mdash; paste the link and say what it is. It joins your library, and the builder draws it
-  before any of the defaults. Below that, a shared library: links anyone can add, and
-  anyone can report.</p>
+  &mdash; paste the link and say what it is. It joins your library immediately, the builder
+  draws it before anything else, and the same entry goes to the shared library for everyone
+  else.</p>
 
   <p class="n1">N=1, not medical advice. These are one person&rsquo;s references, not instruction.</p>
 
@@ -143,6 +143,17 @@
       <button type="button" class="chip on" data-v="3">Full gym</button>
     </div>
 
+    <p class="hint">How much technique it asks for &mdash; the skill it wants, not how hard
+    it feels</p>
+    <div class="chips stack" id="a_tech" role="group" aria-label="Technique">
+      <button type="button" class="chip tall" data-v="s">
+        <b>Straightforward</b><span>pick it up and do it</span></button>
+      <button type="button" class="chip tall" data-v="p">
+        <b>Practised</b><span>you should have done it before</span></button>
+      <button type="button" class="chip tall" data-v="c">
+        <b>Coached</b><span>learn it from a person, not a video</span></button>
+    </div>
+
     <p class="hint">Tag it if it involves any of these</p>
     <div class="chips multi" id="a_avoid" role="group" aria-label="Avoid tags">
       <button type="button" class="chip" data-v="deepknee">Deep knee flexion</button>
@@ -156,11 +167,21 @@
       <input id="a_dose" type="text" spellcheck="false" placeholder="8 each side, 45 sec…">
     </label>
 
+    <p class="hint">YouTube, Instagram, Vimeo and TikTok links.</p>
+
     <details class="how">
-      <summary>What the tags do</summary>
-      <p class="hint">Tell the builder to avoid one of them on a given day and every movement
-      carrying that tag drops out of the draw. What you add here is stored in this browser
-      only, and is drawn before the movements the builder ships with.</p>
+      <summary>Where this goes</summary>
+      <p class="hint">Two places at once. It enters your own library in this browser and the
+      builder can draw it on the next session &mdash; before anything it ships with, and with
+      no approval and no wait. The same entry is sent to the shared library, where it is
+      marked as contributed and where your technique rating travels as self-reported: nobody
+      checks it.</p>
+      <p class="hint">The avoid tags are what let the builder hold a movement back. Say you
+      are avoiding heavy grip on a given day and everything tagged that way drops out of the
+      draw.</p>
+      <p class="hint">Everything after the address is stripped from the link before it is
+      stored &mdash; share links carry tracking that names whoever copied them. What is kept
+      is the movement and nothing about you.</p>
     </details>
 
     <div class="row">
@@ -181,41 +202,8 @@
   <hr>
 
   <h2>Shared<span class="gcount" id="scount"></span></h2>
-  <p class="hint">A shelf of references, not a library of yours.</p>
-
-  <details class="how">
-    <summary>How this works</summary>
-    <p class="hint">Links other people have added, for movements the builder already knows.
-    Nothing here touches your session and nothing here is drawn into a plan. Anything unsafe
-    can be taken down by anyone, from the entry itself; a dead link or the wrong movement is
-    marked for review and stays up.</p>
-  </details>
-
-  <form class="panel" id="share" autocomplete="off">
-    <label class="wide">Which movement
-      <select id="s_move"></select>
-    </label>
-    <label class="wide">The link
-      <input id="s_url" type="text" inputmode="url" spellcheck="false"
-             placeholder="https://youtube.com/watch?v=…">
-    </label>
-    <label class="wide">A note, if it needs one
-      <input id="s_label" type="text" maxlength="80" spellcheck="false"
-             placeholder="the cue at 0:14">
-    </label>
-    <p class="hint">YouTube, Instagram, Vimeo and TikTok links.</p>
-
-    <details class="how">
-      <summary>What is kept</summary>
-      <p class="hint">Everything after the address is stripped before it is stored &mdash;
-      share links carry tracking that names whoever copied them. What is left is the movement,
-      the link, your note, and nothing about you.</p>
-    </details>
-    <div class="row">
-      <button type="submit" id="s_go">Share it</button>
-    </div>
-    <p class="status" id="s_status"></p>
-  </form>
+  <p class="hint">Movements other people have added. Switch them on in the
+  <a href="../builder/">builder</a> and yours draws from these too, after everything else.</p>
 
   <div id="shared"><p class="hint" id="sload">Loading the shared library&hellip;</p></div>
 
@@ -293,7 +281,7 @@ function chipGroup(id, multi) {
     if (id === 'a_type') renderAreas();
   });
 }
-['a_type', 'a_equip', 'a_area'].forEach(id => chipGroup(id, false));
+['a_type', 'a_equip', 'a_area', 'a_tech'].forEach(id => chipGroup(id, false));
 chipGroup('a_avoid', true);
 
 function renderAreas() {
@@ -312,39 +300,68 @@ const say = (msg, bad) => {
   el.className = bad ? 'status err' : 'status';
 };
 
-$('#add').addEventListener('submit', e => {
+// One submission, two destinations. Your own library first and synchronously — it is
+// in this browser, it cannot fail for a reason outside the room, and the builder can
+// draw the movement on the next session. Then the shared library, over the network,
+// where failure is ordinary and must not undo the part that already worked.
+$('#add').addEventListener('submit', async e => {
   e.preventDefault();
   const url  = tidy($('#a_url').value);
   const name = $('#a_name').value.trim();
   const type = one('a_type') || 'mob';
   const p    = AREAS[type].length === 1 ? AREAS[type][0][0] : one('a_area');
+  const tech = one('a_tech');
 
   if (!url)  return say('Paste the link first — that is the point of the entry.', true);
+  if (!allowed(url)) return say(
+    'That link is not somewhere this takes: YouTube, Instagram, Vimeo or TikTok.', true);
   if (!name) return say('Give it a name. It is what you will see mid-session.', true);
   if (!p)    return say('Pick where it works.', true);
+  if (!tech) return say('Say how much technique it asks for. There is no sensible default.', true);
   if (allMovements().some(x => x.n.toLowerCase() === name.toLowerCase()))
     return say(`There is already a movement called “${name}”. Use another name.`, true);
 
+  const dose = $('#a_dose').value.trim() || DOSE[type];
+  const equip = +(one('a_equip') ?? 3);
+  const avoid = many('a_avoid');
+
   const list = customMovements();
-  list.unshift({
-    n: name,
-    p,
-    e: +(one('a_equip') ?? 3),
-    a: many('a_avoid'),
-    d: $('#a_dose').value.trim() || DOSE[type],
-    url,
-    mine: true,
-    added: new Date().toISOString(),
-  });
+  list.unshift({n: name, p, e: equip, a: avoid, d: dose, t: tech, url,
+                mine: true, added: new Date().toISOString()});
   if (!saveCustomMovements(list)) return say('Could not save — this browser refused storage.', true);
 
   VID[name] = url;                    // so the play button opens it everywhere
   saveVid();
-
   $('#a_url').value = ''; $('#a_name').value = ''; $('#a_dose').value = '';
   $$('#a_avoid .chip').forEach(c => c.classList.remove('on'));
-  say(`Added. The builder will draw “${name}” before the defaults.`);
+  $$('#a_tech .chip').forEach(c => c.classList.remove('on'));
   renderMine();
+
+  $('#a_go').disabled = true;
+  say(`Added. The builder will draw “${name}” first. Sending it on\u2026`);
+  try {
+    const res = await fetch(API + '/videos', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({movement: name, url, pattern: p, equip, avoid,
+                            technique: tech, dose: dose || undefined}),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      say(`“${name}” is in your library and the builder will draw it. The shared library ` +
+          `refused it: ${data.error || 'no reason given'}`, true);
+    } else {
+      say(data.duplicate
+        ? `“${name}” is yours now. Somebody had already shared that link.`
+        : `“${name}” is yours now, and shared with everyone else.`);
+      await loadShared();
+    }
+  } catch (_) {
+    say(`“${name}” is in your library and the builder will draw it. The shared library ` +
+        `could not be reached, so nobody else has it yet.`, true);
+  } finally {
+    $('#a_go').disabled = false;
+  }
 });
 
 /* ========================================================= your movements == */
@@ -366,6 +383,7 @@ function renderMine() {
     h += `<li class="vidrow has">
       <span class="vn">${esc(x.n)}
         <span class="exd">${esc(groupLabel(x.p))}${x.d ? ' · ' + esc(x.d) : ''}</span>
+        <span class="tech t-${esc(x.t || 's')}">${esc(techLabel(x.t))}</span>
       </span>
       <span class="vin">
         <a class="vidbtn" target="_blank" rel="noopener" href="${esc(x.url || searchFor(x.n))}"
@@ -415,29 +433,17 @@ function allowed(raw) {
   return HOSTS.some(x => h === x || h.endsWith('.' + x)) ? u.toString() : null;
 }
 
-// Which group a movement belongs in, for the headings. Anything the library doesn't
-// know — somebody else's own movement — files at the end rather than disappearing.
-const PATTERN_OF = new Map(LIB.map(x => [x.n, x.p]));
 const OTHER = '_other';
+const PATTERNS = new Set(GROUPS.map(g => g[0]));
+const KIT = ['bodyweight alone', 'a band', 'dumbbells', 'a full gym'];
 
 let SHARED = null;          // null: not loaded yet. [] : loaded and empty, or unreachable.
 let REPORTED = new Set();
 
-function fillPicker() {
-  const mine = customMovements();
-  const groups = GROUPS.map(([key, label]) => [label, LIB.filter(x => x.p === key).map(x => x.n)])
-    .filter(([, ns]) => ns.length);
-  if (mine.length) groups.unshift(['Yours', mine.map(x => x.n)]);
-  const seen = new Set();
-  $('#s_move').innerHTML = groups.map(([label, names]) => {
-    const opts = names.filter(n => !seen.has(n) && seen.add(n) !== undefined)
-      .map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
-    return opts ? `<optgroup label="${esc(label)}">${opts}</optgroup>` : '';
-  }).join('');
-}
-
 // Rendering never waits on the network: the page is complete before this runs, and
-// complete again whichever way it ends.
+// complete again whichever way it ends. What comes back is also written to storage in
+// the shape movements.js uses, so the builder can draw from it later — including with
+// the API down — for anyone who has switched community movements on.
 async function loadShared() {
   try {
     const res = await fetch(API + '/videos', {headers: {'Accept': 'application/json'}});
@@ -445,7 +451,12 @@ async function loadShared() {
     const data = await res.json();
     SHARED = (Array.isArray(data.videos) ? data.videos : [])
       .map(v => ({...v, url: allowed(v.url)}))
-      .filter(v => v.url && v.movement);
+      .filter(v => v.url && v.movement && PATTERNS.has(v.pattern));
+    saveCommunityMovements(SHARED.map(v => ({
+      n: v.movement, p: v.pattern, e: +v.equip || 0,
+      a: Array.isArray(v.avoid) ? v.avoid : [],
+      d: v.dose || '', t: v.technique || 's', url: v.url, id: v.id,
+    })));
   } catch (_) {
     SHARED = [];
     renderShared(true);
@@ -473,7 +484,7 @@ function renderShared(down) {
 
   const byPattern = new Map();
   list.forEach(v => {
-    const p = PATTERN_OF.get(v.movement) || OTHER;
+    const p = PATTERNS.has(v.pattern) ? v.pattern : OTHER;
     if (!byPattern.has(p)) byPattern.set(p, []);
     byPattern.get(p).push(v);
   });
@@ -485,7 +496,9 @@ function renderShared(down) {
     const rows = byPattern.get(p).map(v => `
       <li class="vidrow has" data-id="${esc(v.id)}">
         <span class="vn">${esc(v.movement)}
-          ${v.label ? `<span class="exd">${esc(v.label)}</span>` : ''}
+          <span class="exd">${esc(KIT[+v.equip] || 'kit unstated')}${v.dose ? ' &middot; ' + esc(v.dose) : ''}</span>
+          <span class="tech t-${esc(v.technique)}">${esc(techLabel(v.technique))}
+            <span class="unver">self-reported</span></span>
         </span>
         <span class="vin">
           <a class="vidbtn" target="_blank" rel="noopener noreferrer" href="${esc(v.url)}"
@@ -505,46 +518,10 @@ function renderShared(down) {
           </span>
         </span>
       </li>`).join('');
-    const label = p === OTHER ? 'Movements the builder doesn\u2019t know' : groupLabel(p);
+    const label = p === OTHER ? 'Filed under nothing the builder knows' : groupLabel(p);
     return `<h3>${esc(label)}</h3><ul class="vidlist">${rows}</ul>`;
   }).join('');
 }
-
-const stell = (msg, bad) => {
-  const el = $('#s_status');
-  el.textContent = msg;
-  el.className = bad ? 'status err' : 'status';
-};
-
-$('#share').addEventListener('submit', async e => {
-  e.preventDefault();
-  const movement = $('#s_move').value;
-  const url = tidy($('#s_url').value);
-  const label = $('#s_label').value.trim();
-  if (!movement) return stell('Pick the movement it shows.', true);
-  if (!url) return stell('Paste the link first.', true);
-  if (!allowed(url)) return stell(
-    'That link is not somewhere the shared library takes: YouTube, Instagram, Vimeo or TikTok.', true);
-
-  $('#s_go').disabled = true;
-  stell('Sending\u2026');
-  try {
-    const res = await fetch(API + '/videos', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(label ? {movement, url, label} : {movement, url}),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) { stell(data.error || 'The library refused that one.', true); return; }
-    $('#s_url').value = ''; $('#s_label').value = '';
-    stell(data.duplicate ? 'Already there \u2014 someone got to it first.' : 'Shared. Thank you.');
-    await loadShared();
-  } catch (_) {
-    stell('Could not reach the shared library. Nothing was sent, and nothing else broke.', true);
-  } finally {
-    $('#s_go').disabled = false;
-  }
-});
 
 $('#shared').addEventListener('click', async e => {
   const open = e.target.closest('.rep');
@@ -584,7 +561,6 @@ $('#shared').addEventListener('click', async e => {
 
 renderAreas();
 renderMine();
-fillPicker();
 loadShared();
 </script>
 </body>
