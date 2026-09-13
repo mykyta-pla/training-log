@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "schema": "wrangler d1 execute notaroutine-videos --remote --file=./schema.sql",
     "schema:local": "wrangler d1 execute notaroutine-videos --local --file=./schema.sql",
     "test": "node test/api.test.js"
   },
