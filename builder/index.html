@@ -797,18 +797,19 @@ function build() {
              built:new Date().toISOString()};
   let repeated = 0;
 
-  // A slot is a pattern and a role. Pass no role and it is a plain pattern draw, which is
-  // what mobility, core and finishers want — nothing there anchors anything.
-  const take = (pattern, role, extra) => {
+  // A slot is a pattern and a role. `drawn` is the patterns the strength block has used
+  // so far, so an either|or slot coming round a second time can favour the other side.
+  const take = (pattern, role, drawn) => {
     const pool = role
-      ? slotPool({p: pattern, r: role}, equip, avoid, used).pool
+      ? slotPool({p: pattern, r: role}, equip, avoid, used, drawn).pool
       : eligible(pattern, equip, avoid, used);
     const x = pickFresh(pool, rec);
     if (!x) return null;
     used.add(x.n);
     if (rec.has(x.n)) repeated++;
-    return {name:x.n, pattern, detail:x.d, t:x.t, r:roleOf(x), e:x.e, a:x.a || [],
-            community: !!x.community, ago: rec.has(x.n) ? rec.get(x.n) : null, ...extra};
+    // `pattern` is the slot, which may be 'hinge|squat'; `p` is the movement's own
+    return {name:x.n, pattern, p:x.p, detail:x.d, t:x.t, r:roleOf(x), e:x.e, a:x.a || [],
+            community: !!x.community, ago: rec.has(x.n) ? rec.get(x.n) : null};
   };
 
   // mobility

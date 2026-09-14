@@ -12,12 +12,16 @@ const fs = require('fs');
 const vm = require('vm');
 const assert = require('assert');
 
-const sandbox = {localStorage: {getItem: () => null, setItem: () => {}}, document: undefined};
+const store = new Map();
+const sandbox = {document: undefined, localStorage: {
+  getItem: k => (store.has(k) ? store.get(k) : null),
+  setItem: (k, v) => store.set(k, String(v)),
+}};
 vm.createContext(sandbox);
 vm.runInContext(fs.readFileSync('movements.js', 'utf8') + `
   ;globalThis.__m = {LIB, FOCUS, REPS, ROLES, SLOT_ROLES, LOGGABLE, focusSequence,
     slotPool, drawStrength, orderStrength, swapNote, detailFor, roleOf, eligible,
-    pickFresh, recencyMap, itemRole, movementFor};`, sandbox);
+    pickFresh, recencyMap, itemRole, movementFor, customMovements, allMovements};`, sandbox);
 const M = sandbox.__m;
 
 let failed = 0, ran = 0;
@@ -30,14 +34,14 @@ const test = (name, fn) => {
 // The builder's own take(), minus the DOM: the same shape drawStrength is handed there.
 function taker(equip, avoid, rec) {
   const used = new Set();
-  return (pattern, role) => {
+  return (pattern, role, drawn) => {
     const pool = role
-      ? M.slotPool({p: pattern, r: role}, equip, avoid, used).pool
+      ? M.slotPool({p: pattern, r: role}, equip, avoid, used, drawn).pool
       : M.eligible(pattern, equip, avoid, used);
     const x = M.pickFresh(pool, rec || new Map());
     if (!x) return null;
     used.add(x.n);
-    return {name: x.n, pattern, detail: x.d, t: x.t, r: M.roleOf(x), e: x.e, a: x.a || []};
+    return {name: x.n, pattern, p: x.p, detail: x.d, t: x.t, r: M.roleOf(x), e: x.e, a: x.a || []};
   };
 }
 
@@ -90,6 +94,47 @@ test('roles run heaviest first, then coached before straightforward', () => {
       if (a.r === b.r) assert.ok(tr[a.t] <= tr[b.t], `${a.name}/${a.t} before ${b.name}/${b.t}`);
     }
   }
+});
+
+console.log('\nboth sides of an either|or slot');
+
+test('a five-exercise full body trains the hinge and the squat, never one twice', () => {
+  for (let i = 0; i < 400; i++) {
+    const pats = fullBody().map(x => x.p);
+    assert.ok(pats.includes('hinge'), 'no hinge: ' + pats.join(', '));
+    assert.ok(pats.includes('squat'), 'no squat: ' + pats.join(', '));
+  }
+});
+
+test('the wrap prefers the side the block has not used', () => {
+  // asked for a hinge-or-squat secondary with the squat already spent
+  const {pool} = M.slotPool({p: 'hinge|squat', r: 'sec'}, 3, [], new Set(), new Set(['squat']));
+  assert.ok(pool.length, 'nothing offered');
+  assert.ok(pool.every(x => x.p === 'hinge'), 'offered a squat: ' + pool.map(x => x.n));
+  // and the other way round
+  const b = M.slotPool({p: 'hinge|squat', r: 'sec'}, 3, [], new Set(), new Set(['hinge'])).pool;
+  assert.ok(b.length && b.every(x => x.p === 'squat'), 'offered a hinge: ' + b.map(x => x.n));
+});
+
+test('with both sides used it goes back to drawing from either', () => {
+  const {pool} = M.slotPool({p: 'hinge|squat', r: 'sec'}, 3, [], new Set(), new Set(['hinge', 'squat']));
+  assert.ok(pool.some(x => x.p === 'hinge') && pool.some(x => x.p === 'squat'),
+    'the tie-break outlived its tie');
+});
+
+test('freshness is a tie-break inside a role, never above it', () => {
+  // squat spent, and the slot wants a main: the hinge mains and squat mains are both
+  // main, so it stays among mains and prefers the hinge — it does not drop to a hinge
+  // accessory to avoid a squat main
+  const {pool, role} = M.slotPool({p: 'hinge|squat', r: 'main'}, 3, [], new Set(), new Set(['squat']));
+  assert.strictEqual(role, 'main');
+  assert.ok(pool.every(x => x.r === 'main'), 'left the role to chase a fresh side');
+});
+
+test('a single-pattern slot is unaffected by the tie-break', () => {
+  const a = M.slotPool({p: 'push', r: 'sec'}, 3, [], new Set()).pool.map(x => x.n).sort();
+  const b = M.slotPool({p: 'push', r: 'sec'}, 3, [], new Set(), new Set(['push'])).pool.map(x => x.n).sort();
+  assert.deepStrictEqual(a, b);
 });
 
 console.log('\nfalling back when no main fits');
@@ -161,6 +206,41 @@ test('a swapped mobility drill keeps its whole prescription', () => {
   assert.strictEqual(M.detailFor(by('Pigeon'), '8 each side', 'm_hip'), '1 min each side');
 });
 
+console.log('\nthe role you choose on a movement you added');
+
+test('a movement you called a main lift anchors the session', () => {
+  store.set('tl.custom', JSON.stringify([
+    {n: 'Zercher squat', p: 'squat', e: 3, a: [], d: '5–8', t: 'c', r: 'main'},
+    {n: 'Band pull-through', p: 'hinge', e: 1, a: [], d: '12–15', t: 's', r: 'acc'}]));
+  try {
+    for (let i = 0; i < 100; i++) {
+      const items = fullBody();
+      assert.strictEqual(items[0].name, 'Zercher squat',
+        'yours is the only main available and did not go first: ' + items.map(x => x.name));
+      assert.notStrictEqual(items[0].name, 'Band pull-through');
+    }
+  } finally { store.delete('tl.custom'); }
+});
+
+test('a movement you added with no role is a secondary, never the anchor', () => {
+  store.set('tl.custom', JSON.stringify([{n: 'Mystery lift', p: 'squat', e: 3, a: [], d: '8', t: 's'}]));
+  try {
+    assert.strictEqual(M.customMovements()[0].r, 'sec');
+    for (let i = 0; i < 100; i++)
+      assert.notStrictEqual(fullBody()[0].name, 'Mystery lift', 'an unlabelled movement anchored a session');
+  } finally { store.delete('tl.custom'); }
+});
+
+test('a movement somebody else shared is an accessory whatever it claims', () => {
+  store.set('tl.usecommunity', '1');
+  store.set('tl.community', JSON.stringify([{n: 'Stranger lift', p: 'squat', e: 0, a: [], d: '5', t: 's', r: 'main'}]));
+  try {
+    const it = M.allMovements().find(x => x.n === 'Stranger lift');
+    assert.ok(it, 'the community tier did not load');
+    assert.strictEqual(it.r, 'acc', 'a shared movement kept a role it sent');
+  } finally { store.delete('tl.community'); store.delete('tl.usecommunity'); }
+});
+
 console.log('\nsessions saved before roles existed');
 
 test('an old item recovers its role from the library by name', () => {
@@ -194,6 +274,19 @@ test('every movement has a role from the vocabulary', () => {
 test('every strength movement has its own prescription', () => {
   const bad = M.LIB.filter(x => M.LOGGABLE.has(x.p) && !x.d);
   assert.strictEqual(bad.length, 0, 'no prescription: ' + bad.map(x => x.n));
+});
+
+test('Box jump is a finisher, not a squat', () => {
+  const bj = M.LIB.find(x => x.n === 'Box jump');
+  assert.strictEqual(bj.p, 'fin', 'three or five jumps are power work, not a squat slot');
+  assert.ok(bj.a.includes('jump'));
+});
+
+test('a finisher carries a whole prescription, not a bare rep range', () => {
+  // only strength gets a set count written in front of it; anywhere else a bare "3–5"
+  // reaches the card as "3–5" and means nothing
+  const bad = M.LIB.filter(x => !M.LOGGABLE.has(x.p) && /^\s*\d+\s*[–—-]\s*\d+\s*$/.test(x.d || ''));
+  assert.strictEqual(bad.length, 0, 'bare rep range outside strength: ' + bad.map(x => x.n));
 });
 
 test('every pattern a main slot asks for has a main to offer', () => {

@@ -69,7 +69,6 @@ const LIB = [
   {n:'Bodyweight squat',     p:'squat', e:0, a:[],           d:'15–20', t:'s', r:'acc'},
   {n:'Cossack squat',        p:'squat', e:0, a:['deepknee'], d:'6–8 each side', t:'p', r:'acc'},
   {n:'Deep ATG squat',       p:'squat', e:3, a:['deepknee'], d:'5–8', t:'c', r:'sec'},
-  {n:'Box jump',             p:'squat', e:3, a:['jump'],     d:'3–5', t:'p', r:'sec'},
   // push
   {n:'Barbell bench press',   p:'push', e:3, a:[],                  d:'4–6', t:'p', r:'main'},
   {n:'Dumbbell bench press',  p:'push', e:2, a:[],                  d:'8–12', t:'s', r:'sec'},
@@ -103,12 +102,16 @@ const LIB = [
   {n:'Side plank',        p:'core', e:0, a:['floor'], d:'30–45 sec each', t:'s', r:'acc'},
   {n:'Hollow hold',       p:'core', e:0, a:['floor'], d:'20–40 sec', t:'p', r:'acc'},
   {n:'Dead bug',          p:'core', e:0, a:['floor'], d:'8–12 each side', t:'s', r:'acc'},
-  {n:'Hanging leg raise', p:'core', e:3, a:['grip'],  d:'8–12', t:'p', r:'sec'},
-  {n:'Ab wheel rollout',  p:'core', e:3, a:['floor'], d:'6–10', t:'p', r:'sec'},
+  {n:'Hanging leg raise', p:'core', e:3, a:['grip'],  d:'8–12 reps', t:'p', r:'sec'},
+  {n:'Ab wheel rollout',  p:'core', e:3, a:['floor'], d:'6–10 reps', t:'p', r:'sec'},
   {n:'Pallof press',      p:'core', e:1, a:[],        d:'10–12 each side', t:'s', r:'acc'},
   {n:'Russian twist',     p:'core', e:0, a:['floor'], d:'12–16 each side', t:'s', r:'acc'},
   {n:'Suitcase carry',    p:'core', e:2, a:['grip'],  d:'30 m each side', t:'s', r:'sec'},
   // finisher
+  // Box jump is here rather than under squat because three or five jumps are power work.
+  // As a squat it was drawn third into a fatigued block and prescribed like a squat; neither
+  // sec nor acc says "do this fresh", and one movement does not earn a fourth role.
+  {n:'Box jump',             p:'fin', e:3, a:['jump'],         d:'5 × 3, 90 sec rest', t:'p', r:'sec'},
   {n:'Rower intervals',      p:'fin', e:3, a:['grip'],         d:'5 × 250 m, 1 min rest', t:'p', r:'sec'},
   {n:'Assault bike sprints', p:'fin', e:3, a:[],               d:'6 × 20 sec hard, 40 sec easy', t:'s', r:'sec'},
   {n:'Wall ball',            p:'fin', e:3, a:['overhead'],     d:'3 × 15', t:'p', r:'sec'},
@@ -132,7 +135,7 @@ const START_KG = {
   // squat
   'Back squat':50, 'Front squat':35, 'Goblet squat':18, 'Leg press':80,
   'Bulgarian split squat':12, 'Walking lunge':12, 'Step-up':12, 'Bodyweight squat':'BW',
-  'Cossack squat':'BW', 'Deep ATG squat':20, 'Box jump':'BW',
+  'Cossack squat':'BW', 'Deep ATG squat':20,
   // push
   'Barbell bench press':45, 'Dumbbell bench press':18, 'Incline dumbbell press':14,
   'Overhead press':30, 'Dumbbell shoulder press':12, 'Push-up':'BW', 'Loaded push-up':10,
@@ -263,7 +266,7 @@ const techNote  = t => (TECHNIQUE[t] || TECHNIQUE.s)[1];
 /* Role: what a movement can carry, not what it trains. Ordered — a session is written
    heaviest first, and ROLES is that order. */
 const ROLES = {
-  main: ['Main lift', 'can anchor the session'],
+  main: ['Main lift', 'the heaviest thing you do that day'],
   sec:  ['Secondary', 'substantial, but not the anchor'],
   acc:  ['Accessory', 'assistance and isolation'],
 };
@@ -448,14 +451,27 @@ function focusSequence(keys) {
   return out;
 }
 
-// Everything that fits the slot: the pattern filter first, then the best role the slot
-// will settle for. Returns the pool and the role it actually found, because "we asked for
-// a main and got a secondary" is worth knowing further up.
-function slotPool(slot, equip, avoid, used) {
+/* Everything that fits the slot: the pattern filter first, then the best role the slot
+   will settle for. Returns the pool and the role it actually found, because "we asked for
+   a main and got a secondary" is worth knowing further up.
+
+   `drawn` is the set of patterns this block has already used. On an either|or slot it
+   breaks the tie towards the side that has not been used: a five-exercise full body wraps
+   back to the hinge-or-squat slot, and without this it could answer "squat" twice and
+   never train a hinge. It is a tie-break inside a role and not above it — a hinge
+   accessory is not a better answer than a squat secondary, it is just a fresher one. */
+function slotPool(slot, equip, avoid, used, drawn) {
   const all = eligible(slot.p, equip, avoid, used);
+  const sides = String(slot.p).split('|');
+  const fresh = (drawn && sides.length > 1) ? sides.filter(p => !drawn.has(p)) : [];
   for (const r of (SLOT_ROLES[slot.r] || SLOT_ROLES.acc)) {
     const pool = all.filter(x => roleOf(x) === r);
-    if (pool.length) return {pool, role: r};
+    if (!pool.length) continue;
+    if (fresh.length) {
+      const unused = pool.filter(x => fresh.includes(x.p));
+      if (unused.length) return {pool: unused, role: r};
+    }
+    return {pool, role: r};
   }
   return {pool: [], role: null};
 }
@@ -481,16 +497,19 @@ function orderStrength(items) {
    row; both would otherwise give a second main. */
 function drawStrength(seq, nEx, take, notes) {
   const items = [];
+  const drawn = new Set();       // the patterns actually used, not the slots asked for
   let mainTaken = false;
   for (let i = 0; i < nEx; i++) {
     const slot = seq[i % seq.length];
     const want = (slot.r === 'main' && mainTaken) ? 'sec' : slot.r;
-    const it = take(slot.p, want);
+    const it = take(slot.p, want, drawn);
     if (!it) {
       (notes || []).push('No ' + slot.p.replace('|', ' or ') + ' movement available with those settings.');
       continue;
     }
     if (roleOf(it) === 'main') mainTaken = true;
+    // the movement's own pattern, which for an either|or slot is one side of it
+    drawn.add(it.p || movementFor(it).p);
     items.push(it);
   }
   return orderStrength(items);

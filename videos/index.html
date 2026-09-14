@@ -154,6 +154,17 @@
         <b>Coached</b><span>learn it from a person, not a video</span></button>
     </div>
 
+    <p class="hint">What it can carry &mdash; not what it trains, and not how hard it feels.
+    One main lift per session and it goes first.</p>
+    <div class="chips stack" id="a_role" role="group" aria-label="Role">
+      <button type="button" class="chip tall" data-v="main">
+        <b>Main lift</b><span>the heaviest thing you do that day</span></button>
+      <button type="button" class="chip tall on" data-v="sec">
+        <b>Secondary</b><span>substantial, but not the anchor</span></button>
+      <button type="button" class="chip tall" data-v="acc">
+        <b>Accessory</b><span>assistance and isolation</span></button>
+    </div>
+
     <p class="hint">Tag it if it involves any of these</p>
     <div class="chips multi" id="a_avoid" role="group" aria-label="Avoid tags">
       <button type="button" class="chip" data-v="deepknee">Deep knee flexion</button>
@@ -176,6 +187,9 @@
       no approval and no wait. The same entry is sent to the shared library, where it is
       marked as contributed and where your technique rating travels as self-reported: nobody
       checks it.</p>
+      <p class="hint">The role is the exception: it stays in this browser. The shared library
+      has no column for it, so a movement somebody else shared is always drawn as an
+      accessory and can never anchor their session.</p>
       <p class="hint">The avoid tags are what let the builder hold a movement back. Say you
       are avoiding heavy grip on a given day and everything tagged that way drops out of the
       draw.</p>
@@ -281,7 +295,7 @@ function chipGroup(id, multi) {
     if (id === 'a_type') renderAreas();
   });
 }
-['a_type', 'a_equip', 'a_area', 'a_tech'].forEach(id => chipGroup(id, false));
+['a_type', 'a_equip', 'a_area', 'a_tech', 'a_role'].forEach(id => chipGroup(id, false));
 chipGroup('a_avoid', true);
 
 function renderAreas() {
@@ -311,6 +325,9 @@ $('#add').addEventListener('submit', async e => {
   const type = one('a_type') || 'mob';
   const p    = AREAS[type].length === 1 ? AREAS[type][0][0] : one('a_area');
   const tech = one('a_tech');
+  // Secondary is pre-selected rather than assumed silently: you know whether what you are
+  // adding is your main lift, and the builder has no way to work it out.
+  const role = one('a_role') || 'sec';
 
   if (!url)  return say('Paste the link first — that is the point of the entry.', true);
   if (!allowed(url)) return say(
@@ -326,7 +343,7 @@ $('#add').addEventListener('submit', async e => {
   const avoid = many('a_avoid');
 
   const list = customMovements();
-  list.unshift({n: name, p, e: equip, a: avoid, d: dose, t: tech, url,
+  list.unshift({n: name, p, e: equip, a: avoid, d: dose, t: tech, r: role, url,
                 mine: true, added: new Date().toISOString()});
   if (!saveCustomMovements(list)) return say('Could not save — this browser refused storage.', true);
 
@@ -335,6 +352,7 @@ $('#add').addEventListener('submit', async e => {
   $('#a_url').value = ''; $('#a_name').value = ''; $('#a_dose').value = '';
   $$('#a_avoid .chip').forEach(c => c.classList.remove('on'));
   $$('#a_tech .chip').forEach(c => c.classList.remove('on'));
+  $$('#a_role .chip').forEach(c => c.classList.toggle('on', c.dataset.v === 'sec'));
   renderMine();
 
   $('#a_go').disabled = true;

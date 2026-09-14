@@ -67,14 +67,21 @@ audience. The N=1 voice does not change.
   slot that can't fill its role settles for a lower one rather than
   leaving a hole, and nothing but a main slot may draw a main. The
   strength block is written heaviest first, and coached before
-  straightforward within a role, so skill work happens fresh.
+  straightforward within a role, so skill work happens fresh. Where a
+  slot names either of two patterns and the sequence comes back to it,
+  it prefers the side the block has not used yet — a full body session
+  does not get to train the squat twice and skip the hinge. That is a
+  tie-break inside a role, never above it.
 - A strength movement's prescription lives on the movement, like a
   mobility one's already does. Reps keyed by pattern are a fallback for
   a movement that has none, not the normal path: a deadlift and a good
   morning share a pattern and must not share their numbers.
 - The shared library has no role column, so a movement someone else
-  shared is drawn as an accessory. Giving it a role needs the column,
-  and the column needs the owner's approval above.
+  shared is drawn as an accessory. You pick the role for your own
+  movements on the add form and it stays in this browser; it is not
+  sent. Giving a shared movement a role needs the column, and the
+  column needs the owner's approval above. This has been asked and
+  the answer is no — do not propose it again unless the owner raises it.
 - The builder draws in three tiers and never mixes them: the movements
   you added, then the ones this site ships with, then — only if you
   switched them on, and the switch is off by default — the ones other
