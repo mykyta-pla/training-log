@@ -2,35 +2,36 @@ name = "notaroutine-api"
 main = "src/index.js"
 compatibility_date = "2025-09-01"
 
-# DISABLED ON PURPOSE — do not uncomment yet.
+# Kept on beside the custom domain below, not instead of it:
+# notaroutine-api.plastomak-nikita.workers.dev is the hostname to curl when you
+# need to tell a broken Worker apart from a broken DNS record. The site calls
+# api.notaroutine.life and only that.
 #
-# This is the custom-domain route: it binds api.notaroutine.life to this Worker
-# and asks Cloudflare to create the DNS record for it. Cloudflare can only do
-# that for a zone it runs, and notaroutine.life is on Porkbun today. Left
-# enabled, every deploy fails on it — the Worker itself is fine, the route
-# cannot be created, and wrangler treats that as a failed deploy.
-#
-# Uncomment when BOTH of these are true, not one:
-#
-#   1. The notaroutine.life zone is on Cloudflare — nameservers moved and the
-#      zone reporting Active in the dashboard.
-#   2. The apex A records for GitHub Pages are DNS-only (grey cloud, not
-#      orange). Proxying them puts Cloudflare in front of Pages, which is a
-#      separate decision and breaks the Pages certificate if it is made by
-#      accident here.
-#
-# Until then the Worker deploys to its workers.dev hostname and the site keeps
-# calling api.notaroutine.life and keeps running its API-down path. That is the
-# designed behaviour, not a fault to work around: do not repoint the site at
-# workers.dev.
-#
-# [[routes]]
-# pattern = "api.notaroutine.life"
-# custom_domain = true
-
-# Until the route above is live this is the only way in:
-# notaroutine-api.plastomak-nikita.workers.dev
+# This line has to sit above [[routes]]. In TOML a bare key after a table
+# header belongs to that table, so moved below it this becomes a key inside the
+# route rather than a setting for the Worker.
 workers_dev = true
+
+# LIVE. This is the custom-domain route: it binds api.notaroutine.life to this
+# Worker and asks Cloudflare to create the DNS record for it, which Cloudflare
+# can only do for a zone it runs. It was commented out while notaroutine.life
+# was on Porkbun — a route that cannot be created fails the whole deploy, even
+# though the Worker itself uploads fine.
+#
+# Both conditions it was waiting on are met:
+#
+#   1. The zone is on Cloudflare — the .life registry returns
+#      paislee.ns.cloudflare.com and theo.ns.cloudflare.com.
+#   2. The apex A records for GitHub Pages are DNS-only, grey cloud. Pages
+#      serves the site directly and its certificate is untouched. Proxying
+#      them would be a separate decision; this route does not make it.
+#
+# So the deploy that carries this line creates api.notaroutine.life, and
+# /videos/ — which has been calling that hostname all along and running its
+# API-down path — starts getting answers without a front-end change.
+[[routes]]
+pattern = "api.notaroutine.life"
+custom_domain = true
 
 # The shared movement library: nine columns and two indexes, all of it already
 # live. The database and its schema were created through the Cloudflare API
