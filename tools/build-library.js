@@ -22,8 +22,8 @@ const sandbox = {localStorage: {getItem: () => null, setItem: () => {}}, documen
 vm.createContext(sandbox);
 // top-level const stays in the script's own scope, so hand the three out explicitly
 vm.runInContext(fs.readFileSync('movements.js', 'utf8') +
-  '\n;globalThis.__lib = {LIB, GROUPS, START_KG};', sandbox);
-const {LIB, GROUPS, START_KG} = sandbox.__lib;
+  '\n;globalThis.__lib = {LIB, GROUPS, START_KG, LOGGABLE};', sandbox);
+const {LIB, GROUPS, START_KG, LOGGABLE} = sandbox.__lib;
 
 const KIT = ['bodyweight alone', 'a band', 'dumbbells', 'a full gym'];
 const TECH = {s: 'Straightforward', p: 'Practised', c: 'Coached'};
@@ -39,11 +39,16 @@ const ent = s => esc(s).replace(/—/g, '&mdash;').replace(/–/g, '&ndash;')
 // The one sentence each movement gets, as plain text. The page shows it with
 // the name in bold; the JSON-LD carries the same sentence as a description, so
 // the markup says exactly what a reader sees and nothing more.
+// A strength movement's prescription is a rep range on its own — the builder puts the set
+// count in front of it — so it needs the word, and it does not replace the starting load
+// the way a mobility drill's whole prescription does.
+const reps = d => /^\d+\s*[–—-]\s*\d+$/.test(d) ? d + ' reps' : d;
+
 const sentence = x => {
   const bits = [KIT[x.e]];
   const kg = START_KG[x.n];
-  if (x.d) bits.push(x.d);
-  else if (typeof kg === 'number') bits.push('starts at ' + kg + ' kg');
+  if (x.d) bits.push(LOGGABLE.has(x.p) ? reps(x.d) : x.d);
+  if (typeof kg === 'number') bits.push('starts at ' + kg + ' kg');
   const held = (x.a || []).map(t => AVOID[t]).filter(Boolean);
   return bits.join(', ') +
     (held.length ? `. Held back when you ask it to avoid ${held.join(' or ')}` : '') + '.';
@@ -62,8 +67,8 @@ const line = x =>
 const plan = (x, label) => {
   const extra = [`Minimum equipment: ${KIT[x.e]}`];
   const kg = START_KG[x.n];
-  if (x.d) extra.push(`Prescription: ${x.d}`);
-  else if (typeof kg === 'number')
+  if (x.d) extra.push(`Prescription: ${LOGGABLE.has(x.p) ? reps(x.d) : x.d}`);
+  if (typeof kg === 'number')
     extra.push(`Starting load for someone of average strength: ${kg} kg`);
   else if (kg === 'BW') extra.push('Starting load: bodyweight');
   const held = (x.a || []).map(t => AVOID[t]).filter(Boolean);

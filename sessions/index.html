@@ -276,7 +276,9 @@ function logBody(s) {
             <span class="ex">
               <span class="exn">${esc(it.name)}</span>
               <span class="exd">${esc(it.detail)}</span>
+              ${roleTag(it)}
               ${techTag(it)}
+              ${it.why ? `<span class="why">${esc(it.why)}</span>` : ''}
             </span>
             <a class="vidbtn" target="_blank" rel="noopener"
                href="${esc(videoFor(it.name))}"
@@ -407,14 +409,21 @@ $('#list').addEventListener('click', e => {
     const used = new Set();
     (s.blocks || []).forEach(bl => (bl.items || []).forEach(x => used.add(x.name)));
     const rec = recencyMap(doneOnly(), s.depth || 0);
-    const x = pickFresh(eligible(it.pattern, equipLevel(), s.avoid || [], used), rec);
+    // same slot: same pattern and same role, so a main lift trades for another main lift.
+    // Only strength has roles; mobility, core and finishers draw on pattern alone.
+    const pool = LOGGABLE.has(String(it.pattern).split('|')[0])
+      ? slotPool({p: it.pattern, r: itemRole(it)}, equipLevel(), s.avoid || [], used).pool
+      : eligible(it.pattern, equipLevel(), s.avoid || [], used);
+    const x = pickFresh(pool, rec);
     if (!x) {
       const p = document.querySelector('#p-' + CSS.escape(s.id) + ' .pstatus');
       if (p) p.textContent = 'Nothing else available for that slot.';
       return;
     }
-    b.items[i] = {name: x.n, pattern: it.pattern, detail: x.d || it.detail,
-                  t: x.t, community: !!x.community,
+    b.items[i] = {name: x.n, pattern: it.pattern, detail: detailFor(x, it.detail, it.pattern),
+                  reps: x.d || REPS[String(it.pattern).split('|')[0]] || it.reps,
+                  t: x.t, r: roleOf(x), e: x.e, a: x.a || [], community: !!x.community,
+                  why: swapNote(movementFor(it), x),
                   ago: rec.has(x.n) ? rec.get(x.n) : null};
     seedSession(s);          // a different movement gets its own numbers
     save(); redrawLog(s.id); return;
