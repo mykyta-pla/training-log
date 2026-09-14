@@ -27,6 +27,11 @@ const {LIB, GROUPS, START_KG, LOGGABLE} = sandbox.__lib;
 
 const KIT = ['bodyweight alone', 'a band', 'dumbbells', 'a full gym'];
 const TECH = {s: 'Straightforward', p: 'Practised', c: 'Coached'};
+// plane and demand, in words. Demand is not technique: a supine twist asks for no
+// skill and costs nothing, a Jefferson curl asks for a lot of both, and a wall sit
+// asks for none and still costs you something.
+const PLANE = {sag: 'Forward and back', front: 'Side to side', trans: 'Rotation'};
+const DEMAND = ['', 'Easy day', 'Real work', 'Costs you something'];
 const AVOID = {
   deepknee: 'deep knee flexion', overhead: 'overhead loading',
   jump: 'jumping and impact', floor: 'floor work', grip: 'heavy grip',
@@ -56,7 +61,9 @@ const sentence = x => {
 
 const line = x =>
   `    <li><strong>${ent(x.n)}</strong> &mdash; ${ent(sentence(x))}` +
-  `\n        <span class="tech t-${x.t}">${TECH[x.t]}</span></li>`;
+  `\n        <span class="tech t-${x.t}">${TECH[x.t]}</span>` +
+  `\n        <span class="axis">${ent(PLANE[x.pl] || '')}${x.u ? ', one side at a time' : ''}` +
+  ` &middot; ${ent(DEMAND[x.dm] || '')}</span></li>`;
 
 // ExercisePlan, not ExerciseAction. An Action asserts that something was or will
 // be performed, by an agent, at a time — none of which is true of a menu nobody
@@ -74,6 +81,8 @@ const plan = (x, label) => {
   const held = (x.a || []).map(t => AVOID[t]).filter(Boolean);
   if (held.length) extra.push(`Held back when avoiding: ${held.join(', ')}`);
   extra.push(`Technique: ${TECH[x.t]}`);
+  if (PLANE[x.pl]) extra.push(`Plane of movement: ${PLANE[x.pl]}${x.u ? ', one side at a time' : ''}`);
+  if (DEMAND[x.dm]) extra.push(`Demand: ${DEMAND[x.dm]}`);
   return {
     '@type': 'ExercisePlan',
     name: x.n,

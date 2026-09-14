@@ -45,11 +45,12 @@ about it. If you are looking for something to quote or cite, it is here.
   than argued away.
 
 - **The movement library** — /movements/
-  86 movements grouped by what they train, each with the least equipment it
+  225 movements grouped by what they train, each with the least equipment it
   needs, either its prescription or an ordinary starting load, and a technique
   rating: straightforward (pick it up and do it), practised (you should have
-  done it before), coached (learn it from a person, not a video). Seven are
-  rated coached. The rating is about the skill a movement demands rather than
+  done it before), coached (learn it from a person, not a video). Twenty-six are
+  rated coached. Each also carries the plane it works in — 72 are not
+  forward-and-back — and whether one side works at a time, which 79 do. The rating is about the skill a movement demands rather than
   how hard it feels, which is a distinction most exercise databases do not
   make. Generated from the same file the builder draws from, so the page and
   the tool cannot disagree.

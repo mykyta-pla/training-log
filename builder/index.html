@@ -107,7 +107,7 @@
   <p class="n1">N=1, not medical advice. This builds sessions from one person&rsquo;s rotation
   menu. It knows nothing about you &mdash; set the constraints yourself, and stop if something hurts.</p>
 
-  <p class="hint">It draws from <a href="../movements/">the movement library</a> &mdash; 86
+  <p class="hint">It draws from <a href="../movements/">the movement library</a> &mdash; 225
   movements, what each one needs, and the load it starts you at.</p>
 
   <!-- ========================== READINESS ========================== -->
@@ -334,7 +334,7 @@
   <noscript>
     <div class="note"><p>The builder draws the session in your browser, so it needs
     JavaScript. What it draws from is plain text on
-    <a href="../movements/">the movement library</a> page: all 86 movements, what each one
+    <a href="../movements/">the movement library</a> page: all 225 movements, what each one
     needs, and an ordinary starting load.</p></div>
   </noscript>
 
@@ -799,9 +799,11 @@ function build() {
 
   // A slot is a pattern and a role. `drawn` is the patterns the strength block has used
   // so far, so an either|or slot coming round a second time can favour the other side.
-  const take = (pattern, role, drawn) => {
+  // `test`, where given, is a hard filter on the candidates — the variety repair
+  // asking for a movement out of the sagittal plane, or one that works a side at a time.
+  const take = (pattern, role, drawn, test) => {
     const pool = role
-      ? slotPool({p: pattern, r: role}, equip, avoid, used, drawn).pool
+      ? slotPool({p: pattern, r: role}, equip, avoid, used, drawn, test).pool
       : eligible(pattern, equip, avoid, used);
     const x = pickFresh(pool, rec);
     if (!x) return null;
@@ -809,7 +811,8 @@ function build() {
     if (rec.has(x.n)) repeated++;
     // `pattern` is the slot, which may be 'hinge|squat'; `p` is the movement's own
     return {name:x.n, pattern, p:x.p, detail:x.d, t:x.t, r:roleOf(x), e:x.e, a:x.a || [],
-            community: !!x.community, ago: rec.has(x.n) ? rec.get(x.n) : null};
+            pl:x.pl, u:x.u, dm:x.dm, community: !!x.community,
+            ago: rec.has(x.n) ? rec.get(x.n) : null};
   };
 
   // mobility
@@ -829,7 +832,7 @@ function build() {
     const m = time.str;
     const nEx = m < 14 ? 2 : m < 22 ? 3 : m < 32 ? 4 : 5;
     const fmt = one('strfmt'), seq = focusSequence(many('strfocus'));
-    const items = drawStrength(seq, nEx, take, S.note);
+    const items = drawStrength(seq, nEx, take, S.note, used);
     // each movement's own rep range, captured before a format writes over detail
     items.forEach(it => it.reps = it.detail || REPS[it.pattern.split('|')[0]] || '8–12');
     let sub, est;
@@ -838,8 +841,8 @@ function build() {
       const comp = items.filter(x => roleOf(x) !== 'acc');
       const acc  = items.filter(x => roleOf(x) === 'acc');
       const sets = Math.max(2, Math.min(5, Math.round((m - acc.length * 4) / (Math.max(1, comp.length) * 3))));
-      comp.forEach(it => it.detail = sets + ' × ' + it.reps);
-      acc.forEach(it => it.detail = 'circuit · ' + it.reps);
+      comp.forEach(it => it.detail = withSets(sets, it.reps));
+      acc.forEach(it => it.detail = ownsSets(it.reps) ? it.reps : 'circuit · ' + it.reps);
       sub = acc.length
         ? `${sets} sets on the compounds, 2 min rest. Then the accessories as a circuit — 3 rounds, minimal rest.`
         : `${sets} sets each, 2 min rest. Nothing light enough to circuit this time.`;
@@ -847,12 +850,12 @@ function build() {
     } else if (fmt === 'circuit') {
       const rounds = Math.max(2, Math.min(6, Math.round(m / (items.length*1.6 + 1.5))));
       sub = rounds + ' rounds, minimal rest between exercises, 90 sec between rounds. Reps as written on each.';
-      items.forEach(it => it.detail = it.reps + ' reps');
+      items.forEach(it => it.detail = ownsSets(it.reps) ? it.reps : it.reps + ' reps');
       est = Math.round(rounds * (items.length*1.6 + 1.5));
     } else {
       const sets = Math.max(2, Math.min(5, Math.round(m / (items.length*3))));
       sub = sets + ' sets each, 2 min rest. Leave one or two reps in reserve.';
-      items.forEach(it => it.detail = sets + ' × ' + it.reps);
+      items.forEach(it => it.detail = withSets(sets, it.reps));
       est = items.length * sets * 3;
     }
     time.str = est;

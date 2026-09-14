@@ -465,6 +465,15 @@ td.num { font: 500 14.5px/1.5 var(--mono); color: var(--ink); white-space: nowra
   letter-spacing: .12em; text-transform: uppercase;
 }
 
+/* Plane and demand on a library entry. Quieter than the technique rating, because
+   they describe the movement rather than warn you about it. */
+.axis {
+  display: block;
+  margin-top: 2px;
+  font: 400 11.5px/1.5 var(--mono);
+  color: var(--faint);
+}
+
 /* One line under a movement that was swapped, saying what actually changed — read off
    the equipment level, the avoid tags and the technique rating, never written by hand. */
 .why {

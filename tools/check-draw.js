@@ -21,7 +21,8 @@ vm.createContext(sandbox);
 vm.runInContext(fs.readFileSync('movements.js', 'utf8') + `
   ;globalThis.__m = {LIB, FOCUS, REPS, ROLES, SLOT_ROLES, LOGGABLE, focusSequence,
     slotPool, drawStrength, orderStrength, swapNote, detailFor, roleOf, eligible,
-    pickFresh, recencyMap, itemRole, movementFor, customMovements, allMovements};`, sandbox);
+    pickFresh, recencyMap, itemRole, movementFor, customMovements, allMovements,
+    VARIETY, withSets, ownsSets, targetReps};`, sandbox);
 const M = sandbox.__m;
 
 let failed = 0, ran = 0;
@@ -34,21 +35,26 @@ const test = (name, fn) => {
 // The builder's own take(), minus the DOM: the same shape drawStrength is handed there.
 function taker(equip, avoid, rec) {
   const used = new Set();
-  return (pattern, role, drawn) => {
+  const take = (pattern, role, drawn, test) => {
     const pool = role
-      ? M.slotPool({p: pattern, r: role}, equip, avoid, used, drawn).pool
+      ? M.slotPool({p: pattern, r: role}, equip, avoid, used, drawn, test).pool
       : M.eligible(pattern, equip, avoid, used);
     const x = M.pickFresh(pool, rec || new Map());
     if (!x) return null;
     used.add(x.n);
-    return {name: x.n, pattern, p: x.p, detail: x.d, t: x.t, r: M.roleOf(x), e: x.e, a: x.a || []};
+    return {name: x.n, pattern, p: x.p, detail: x.d, t: x.t, r: M.roleOf(x), e: x.e,
+            a: x.a || [], pl: x.pl, u: x.u, dm: x.dm};
   };
+  take.used = used;
+  return take;
 }
 
 // A full-body 60-minute session draws five exercises: build() gives the strength block
 // 33 minutes at that total, and nEx is 5 once the block is 32 minutes or more.
-const fullBody = (equip = 3, avoid = []) =>
-  M.drawStrength(M.focusSequence(['full']), 5, taker(equip, avoid), []);
+const fullBody = (equip = 3, avoid = []) => {
+  const t = taker(equip, avoid);
+  return M.drawStrength(M.focusSequence(['full']), 5, t, [], t.used);
+};
 
 console.log('\nfull body, 60 minutes, full gym');
 
@@ -139,28 +145,35 @@ test('a single-pattern slot is unaffected by the tie-break', () => {
 
 console.log('\nfalling back when no main fits');
 
-test('dumbbells only: no main exists, the slot takes a secondary', () => {
-  const mains = M.LIB.filter(x => x.r === 'main' && (x.p === 'hinge' || x.p === 'squat'));
-  assert.ok(mains.every(x => x.e === 3), 'a main hinge/squat under a full gym would void this test');
-  for (let i = 0; i < 200; i++) {
-    const items = fullBody(2);
-    assert.strictEqual(items.filter(x => x.r === 'main').length, 0);
-    assert.strictEqual(items.length, 5, 'the block must still fill');
-    assert.strictEqual(items[0].r, 'sec');
-  }
+test('a main slot with no main in reach settles for a secondary', () => {
+  // no push movement is both a main and doable with no equipment
+  assert.ok(!M.LIB.some(x => x.p === 'push' && x.r === 'main' && x.e === 0));
+  const {pool, role} = M.slotPool({p: 'push', r: 'main'}, 0, [], new Set());
+  assert.strictEqual(role, 'sec', 'left the slot empty instead of settling');
+  assert.ok(pool.length);
 });
 
-test('bodyweight only: falls all the way to accessory rather than failing', () => {
+test('and falls all the way to accessory rather than leaving a hole', () => {
+  const {pool, role} = M.slotPool({p: 'acc', r: 'main'}, 0, ['floor', 'deepknee'], new Set());
+  assert.strictEqual(role, 'acc');
+  assert.ok(pool.length);
+});
+
+test('bodyweight and dumbbells can now anchor a session', () => {
+  // v2 added non-barbell mains on purpose; before it, every main needed a full gym
+  const low = M.LIB.filter(x => x.r === 'main' && x.e < 3);
+  assert.ok(low.length >= 4, 'expected non-barbell mains, found ' + low.length);
   for (let i = 0; i < 200; i++) {
     const items = fullBody(0);
-    assert.ok(items.length >= 1, 'drew nothing at all');
-    assert.strictEqual(items.filter(x => x.r === 'main').length, 0);
+    assert.strictEqual(items.length, 5, 'the block must still fill');
+    assert.ok(items.filter(x => x.r === 'main').length <= 1, 'more than one main');
   }
 });
 
 test('two focuses merged still give one main', () => {
   for (let i = 0; i < 300; i++) {
-    const items = M.drawStrength(M.focusSequence(['upper', 'lower']), 5, taker(3, []), []);
+    const t = taker(3, []);
+    const items = M.drawStrength(M.focusSequence(['upper', 'lower']), 5, t, [], t.used);
     assert.ok(items.filter(x => x.r === 'main').length <= 1,
       'merged focuses drew ' + items.filter(x => x.r === 'main').map(x => x.name));
   }
@@ -171,6 +184,58 @@ test('a sec or acc slot never draws a main', () => {
   for (const slot of [{p: 'push', r: 'sec'}, {p: 'pull', r: 'acc'}, {p: 'hinge', r: 'sec'}]) {
     const {pool} = M.slotPool(slot, 3, [], used);
     assert.ok(pool.every(x => M.roleOf(x) !== 'main'), slot.p + '/' + slot.r + ' offered a main');
+  }
+});
+
+console.log('\nvariety: plane and unilateral');
+
+const sagittal = x => !!x.pl && x.pl !== 'sag';
+
+test('a session gets at least one movement out of the sagittal plane', () => {
+  let missed = 0;
+  for (let i = 0; i < 400; i++) if (!fullBody().some(sagittal)) missed++;
+  assert.strictEqual(missed, 0, missed + '/400 sessions were entirely sagittal');
+});
+
+test('a session gets at least one unilateral movement', () => {
+  let missed = 0;
+  for (let i = 0; i < 400; i++) if (!fullBody().some(x => x.u)) missed++;
+  assert.strictEqual(missed, 0, missed + '/400 sessions had nothing unilateral');
+});
+
+test('both hold at every equipment level the pool can serve', () => {
+  for (const equip of [0, 1, 2, 3]) {
+    for (let i = 0; i < 120; i++) {
+      const items = fullBody(equip);
+      assert.ok(items.some(sagittal), 'equip ' + equip + ': all sagittal — ' + items.map(x => x.name));
+      assert.ok(items.some(x => x.u), 'equip ' + equip + ': none unilateral — ' + items.map(x => x.name));
+    }
+  }
+});
+
+test('they are soft — a pool with neither still yields a session', () => {
+  // band-only pull, where the eligible movements are sagittal and bilateral
+  const t = taker(1, ['floor', 'grip', 'overhead', 'deepknee', 'jump']);
+  const items = M.drawStrength([{p: 'pull', r: 'sec'}, {p: 'pull', r: 'acc'}], 2, t, [], t.used);
+  assert.ok(items.length >= 1, 'the invariants emptied the session');
+});
+
+test('fixing one invariant never costs the other', () => {
+  for (let i = 0; i < 400; i++) {
+    const items = fullBody();
+    assert.ok(items.some(sagittal) && items.some(x => x.u),
+      'ended with only one of the two: ' + items.map(x => x.name + '/' + x.pl + (x.u ? '/u' : '')));
+  }
+});
+
+test('the invariants do not break the rules above them', () => {
+  for (let i = 0; i < 300; i++) {
+    const items = fullBody();
+    assert.strictEqual(items.filter(x => x.r === 'main').length, 1, 'main count changed');
+    assert.strictEqual(items[0].r, 'main', 'main is no longer first');
+    assert.strictEqual(new Set(items.map(x => x.name)).size, items.length, 'a movement was drawn twice');
+    const pats = items.map(x => x.p);
+    assert.ok(pats.includes('hinge') && pats.includes('squat'), 'either|or rule broken: ' + pats);
   }
 });
 
@@ -198,6 +263,29 @@ test('a swapped strength movement keeps the set count and brings its own reps', 
   const by = n => M.LIB.find(x => x.n === n);
   assert.strictEqual(M.detailFor(by('Good morning'), '4 × 3–5', 'hinge'), '4 × 8–12');
   assert.strictEqual(M.detailFor(by('Conventional deadlift'), '3 × 8–12', 'hinge'), '3 × 3–5');
+});
+
+test('a prescription that counts its own sets is not given a second count', () => {
+  // v2 movements carry whole prescriptions where a set count is part of the thing:
+  // a pistol squat is 4 × 5 a side, and Heavy Slow Resistance is its tempo
+  assert.strictEqual(M.withSets(3, '4 × 5 each side'), '4 × 5 each side');
+  assert.strictEqual(M.withSets(3, '4 × 6, 3 sec up and 3 sec down'), '4 × 6, 3 sec up and 3 sec down');
+  assert.strictEqual(M.withSets(3, '3–5'), '3 × 3–5');
+  assert.strictEqual(M.ownsSets('3 × 12–15'), true);
+  assert.strictEqual(M.ownsSets('8–12 each side'), false);
+});
+
+test('no strength movement can produce a doubled set count', () => {
+  for (const x of M.LIB.filter(x => M.LOGGABLE.has(x.p))) {
+    const out = M.withSets(3, x.d);
+    assert.ok(!/^\s*\d+\s*×\s*\d+\s*×/.test(out), x.n + ' → ' + out);
+  }
+});
+
+test('the reps box fills from a fixed prescription as well as a range', () => {
+  assert.strictEqual(M.targetReps('4 × 5 each side'), '5');
+  assert.strictEqual(M.targetReps('3–5'), '3');
+  assert.strictEqual(M.targetReps('3 × 12–15'), '12');
 });
 
 test('a swapped mobility drill keeps its whole prescription', () => {
