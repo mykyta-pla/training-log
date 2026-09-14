@@ -251,6 +251,17 @@
           <button type="button" class="chip" data-v="circuit">Circuit</button>
           <button type="button" class="chip" data-v="mix">Mix</button>
         </div>
+
+        <details class="how">
+          <summary>How the order is chosen</summary>
+          <p class="hint">Each slot asks for a role as well as a pattern, so a hinge slot
+          wanting a main lift draws a deadlift and not a good morning. One main lift per
+          session and it goes first; after it, coached movements before straightforward
+          ones, so the skill work happens while you&rsquo;re fresh. Reps come from the
+          movement itself &mdash; a deadlift and a good morning don&rsquo;t share numbers.
+          With less equipment there may be no main lift available, and the slot takes the
+          most substantial thing that fits rather than leaving a hole.</p>
+        </details>
       </div>
     </div>
 
@@ -358,15 +369,6 @@ const CARDIO = {
   pyr:    {n:'Rower pyramid',   min:16, how:'5 min warm-up. 250 / 500 / 750 / 500 / 250 m hard, equal rest to work time.'},
 };
 
-const FOCUS = {
-  full:  ['hinge|squat','push','pull','acc'],
-  upper: ['push','pull','push','pull'],
-  lower: ['hinge','squat','hinge|squat','acc'],
-  push:  ['push','push','push','acc'],
-  pull:  ['pull','pull','pull','acc'],
-  post:  ['hinge','pull','hinge','acc'],
-};
-
 // Each finisher option draws a different number of movements and shapes them differently.
 // The prescription on the movement itself only survives 'one' — the rest are on a clock,
 // so they write their own.
@@ -383,19 +385,6 @@ const FIN = {
             sub:'Six minutes, as many rounds as the form holds. Stop when the reps get ugly, not when the clock does.',
             d:() => '10 reps, or 30 sec'},
 };
-
-const REPS = {hinge:'5–8', squat:'6–10', push:'6–10', pull:'6–10', acc:'10–15'};
-
-// One focus draws its own sequence. Several draw round-robin, so Upper + Lower goes
-// push, hinge, pull, squat — four exercises give two of each instead of four of one.
-function focusSequence(keys) {
-  const seqs = (keys || []).map(k => FOCUS[k]).filter(Boolean);
-  if (!seqs.length) return FOCUS.full;
-  if (seqs.length === 1) return seqs[0];
-  const out = [], longest = Math.max(...seqs.map(x => x.length));
-  for (let i = 0; i < longest; i++) seqs.forEach(x => { if (i < x.length) out.push(x[i]); });
-  return out;
-}
 
 /* ============================================================== storage == */
 
@@ -808,21 +797,25 @@ function build() {
              built:new Date().toISOString()};
   let repeated = 0;
 
-  const take = (pattern, extra) => {
-    const pool = eligible(pattern, equip, avoid, used);
+  // A slot is a pattern and a role. Pass no role and it is a plain pattern draw, which is
+  // what mobility, core and finishers want — nothing there anchors anything.
+  const take = (pattern, role, extra) => {
+    const pool = role
+      ? slotPool({p: pattern, r: role}, equip, avoid, used).pool
+      : eligible(pattern, equip, avoid, used);
     const x = pickFresh(pool, rec);
     if (!x) return null;
     used.add(x.n);
     if (rec.has(x.n)) repeated++;
-    return {name:x.n, pattern, detail:x.d, t:x.t, community: !!x.community,
-            ago: rec.has(x.n) ? rec.get(x.n) : null, ...extra};
+    return {name:x.n, pattern, detail:x.d, t:x.t, r:roleOf(x), e:x.e, a:x.a || [],
+            community: !!x.community, ago: rec.has(x.n) ? rec.get(x.n) : null, ...extra};
   };
 
   // mobility
   if (want.mob) {
     let areas = many('mobareas'); if (!areas.length) areas = ['shoulder','hip','spine','neck'];
     const n = time.mob >= 9 ? 4 : 3, items = [];
-    for (let i = 0; i < n; i++) { const it = take('m_' + areas[i % areas.length]); if (it) items.push(it); }
+    for (let i = 0; i < n; i++) { const it = take('m_' + areas[i % areas.length], null); if (it) items.push(it); }
     if (items.length) S.blocks.push({key:'mob', title:'Mobility', mins:time.mob,
       sub:'Pick-and-mix, not a routine. Move through them, don’t grind.', items});
   }
@@ -834,33 +827,31 @@ function build() {
   if (want.str) {
     const m = time.str;
     const nEx = m < 14 ? 2 : m < 22 ? 3 : m < 32 ? 4 : 5;
-    const fmt = one('strfmt'), seq = focusSequence(many('strfocus')), items = [];
-    for (let i = 0; i < nEx; i++) {
-      const it = take(seq[i % seq.length]);
-      if (it) items.push(it);
-      else S.note.push('No ' + seq[i % seq.length].replace('|',' or ') + ' movement available with those settings.');
-    }
+    const fmt = one('strfmt'), seq = focusSequence(many('strfocus'));
+    const items = drawStrength(seq, nEx, take, S.note);
+    // each movement's own rep range, captured before a format writes over detail
+    items.forEach(it => it.reps = it.detail || REPS[it.pattern.split('|')[0]] || '8–12');
     let sub, est;
     if (fmt === 'mix') {
       // heavy work straight and rested; the small stuff circuits at the end
-      const comp = items.filter(x => x.pattern.split('|')[0] !== 'acc');
-      const acc  = items.filter(x => x.pattern.split('|')[0] === 'acc');
+      const comp = items.filter(x => roleOf(x) !== 'acc');
+      const acc  = items.filter(x => roleOf(x) === 'acc');
       const sets = Math.max(2, Math.min(5, Math.round((m - acc.length * 4) / (Math.max(1, comp.length) * 3))));
-      comp.forEach(it => it.detail = sets + ' × ' + (REPS[it.pattern.split('|')[0]] || '8–12'));
-      acc.forEach(it => it.detail = 'circuit · 10–15');
+      comp.forEach(it => it.detail = sets + ' × ' + it.reps);
+      acc.forEach(it => it.detail = 'circuit · ' + it.reps);
       sub = acc.length
         ? `${sets} sets on the compounds, 2 min rest. Then the accessories as a circuit — 3 rounds, minimal rest.`
         : `${sets} sets each, 2 min rest. Nothing light enough to circuit this time.`;
       est = comp.length * sets * 3 + acc.length * 4;
     } else if (fmt === 'circuit') {
       const rounds = Math.max(2, Math.min(6, Math.round(m / (items.length*1.6 + 1.5))));
-      sub = rounds + ' rounds, minimal rest between exercises, 90 sec between rounds. 8–12 reps each.';
-      items.forEach(it => it.detail = '8–12 reps');
+      sub = rounds + ' rounds, minimal rest between exercises, 90 sec between rounds. Reps as written on each.';
+      items.forEach(it => it.detail = it.reps + ' reps');
       est = Math.round(rounds * (items.length*1.6 + 1.5));
     } else {
       const sets = Math.max(2, Math.min(5, Math.round(m / (items.length*3))));
       sub = sets + ' sets each, 2 min rest. Leave one or two reps in reserve.';
-      items.forEach(it => it.detail = sets + ' × ' + (REPS[it.pattern.split('|')[0]] || '8–12'));
+      items.forEach(it => it.detail = sets + ' × ' + it.reps);
       est = items.length * sets * 3;
     }
     time.str = est;
@@ -872,14 +863,14 @@ function build() {
   // core
   if (want.core) {
     const items = [];
-    for (let i = 0; i < 2; i++) { const it = take('core'); if (it) items.push(it); }
+    for (let i = 0; i < 2; i++) { const it = take('core', null); if (it) items.push(it); }
     if (items.length) S.blocks.push({key:'core', title:'Core', mins:time.core, sub:'2–3 rounds.', items});
   }
 
   // finisher
   if (want.fin) {
     const items = [];
-    for (let i = 0; i < finVar.ex; i++) { const it = take('fin'); if (it) items.push(it); }
+    for (let i = 0; i < finVar.ex; i++) { const it = take('fin', null); if (it) items.push(it); }
     if (items.length) {
       // on a clock, the movement's own prescription doesn't apply — the format writes it
       if (finVar.d) items.forEach((it, i) => it.detail = finVar.d(i));
@@ -960,9 +951,11 @@ function render(S) {
             <span class="ex">
               <span class="exn">${esc(it.name)}</span>
               <span class="exd">${esc(it.detail)}</span>
+              ${roleTag(it)}
               ${techTag(it)}
               ${it.ago !== null && it.ago !== undefined ? `<span class="ago">${it.ago === 0 ? 'last session' : it.ago === 1 ? '2 sessions ago' : (it.ago+1)+' sessions ago'}</span>` : ''}
               ${prev ? `<span class="prev">last: ${esc(prev.load)}</span>` : ''}
+              ${it.why ? `<span class="why">${esc(it.why)}</span>` : ''}
             </span>
             <a class="vidbtn" target="_blank" rel="noopener"
                href="${esc(videoFor(it.name))}"
@@ -1041,14 +1034,22 @@ function renderSessions() {
 $('#out').addEventListener('click', e => {
   const swap = e.target.closest('.swap');
   if (swap) {
-    const b = CURRENT.blocks[+swap.dataset.b], i = +swap.dataset.i;
+    const b = CURRENT.blocks[+swap.dataset.b], i = +swap.dataset.i, was = b.items[i];
+    // everything already in the session is off the table, the movement being replaced included
     const used = new Set(); CURRENT.blocks.forEach(bl => bl.items.forEach(x => used.add(x.name)));
-    const pool = eligible(b.items[i].pattern, +one('equip'), CURRENT.avoid, used);
+    // same slot means same pattern and same role — a main lift trades for another main lift.
+    // Only strength has roles; mobility, core and finishers draw on pattern alone.
+    const strength = LOGGABLE.has(String(was.pattern).split('|')[0]);
+    const pool = strength
+      ? slotPool({p: was.pattern, r: itemRole(was)}, +one('equip'), CURRENT.avoid, used).pool
+      : eligible(was.pattern, +one('equip'), CURRENT.avoid, used);
     const rec = recencyMap(doneOnly(), CURRENT.depth || 0);
     const x = pickFresh(pool, rec);
     if (!x) { $('#copystatus').textContent = 'Nothing else available for that slot.'; return; }
-    b.items[i] = {...b.items[i], name:x.n, detail:x.d || b.items[i].detail,
-                  t:x.t, community: !!x.community,
+    b.items[i] = {...was, name:x.n, detail:detailFor(x, was.detail, was.pattern),
+                  reps: x.d || REPS[String(was.pattern).split('|')[0]] || was.reps,
+                  t:x.t, r:roleOf(x), e:x.e, a:x.a || [], community: !!x.community,
+                  why: swapNote(movementFor(was), x),
                   ago: rec.has(x.n) ? rec.get(x.n) : null};
     render(CURRENT); return;
   }

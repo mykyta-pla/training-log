@@ -58,6 +58,23 @@ audience. The N=1 voice does not change.
   practised, c coached. It rates the skill the movement demands, not
   how hard it feels. On anything from the shared library it is
   self-reported and must be labelled unverified wherever it is shown.
+- Every movement also carries a role: main can anchor a session, sec is
+  substantial but not the anchor, acc is assistance and isolation. It is
+  independent of pattern, equipment and technique — it says what a
+  movement can carry, not what it trains or how much skill it asks for.
+  A slot in the builder is a pattern and a role together, never a bare
+  pattern. At most one main movement per session and it goes first; a
+  slot that can't fill its role settles for a lower one rather than
+  leaving a hole, and nothing but a main slot may draw a main. The
+  strength block is written heaviest first, and coached before
+  straightforward within a role, so skill work happens fresh.
+- A strength movement's prescription lives on the movement, like a
+  mobility one's already does. Reps keyed by pattern are a fallback for
+  a movement that has none, not the normal path: a deadlift and a good
+  morning share a pattern and must not share their numbers.
+- The shared library has no role column, so a movement someone else
+  shared is drawn as an accessory. Giving it a role needs the column,
+  and the column needs the owner's approval above.
 - The builder draws in three tiers and never mixes them: the movements
   you added, then the ones this site ships with, then — only if you
   switched them on, and the switch is off by default — the ones other
@@ -142,7 +159,8 @@ worker/             the api.notaroutine.life Worker — the shared video library
                     wrangler and a package.json live here, never at the root
 style.css           the whole design system
 tools/              repo scripts, never served: the og card, the sitemap, the
-                    movement library block in movements/, the JSON-LD check
+                    movement library block in movements/, the JSON-LD check,
+                    the session draw check
 
 ## Before you finish
 - Test at 390px width. No horizontal overflow.
@@ -150,5 +168,5 @@ tools/              repo scripts, never served: the og card, the sitemap, the
 - No console errors.
 - Read the page with JavaScript off. If the content is gone, fix it.
 - node tools/build-sitemap.js --check, tools/build-library.js --check,
-  tools/check-jsonld.js — all three clean.
+  tools/check-jsonld.js, tools/check-draw.js — all four clean.
 - Do not add files to the repo root beyond what is listed above.
