@@ -1,6 +1,6 @@
 # api.notaroutine.life
 
-The shared video library. One Worker, three endpoints, five columns. Nothing
+The shared video library. One Worker, three endpoints, nine columns. Nothing
 else may move in here — see the scoped-exception rule in `../CLAUDE.md`.
 
 The site itself is still plain HTML and CSS with no build step. This directory
@@ -53,14 +53,14 @@ Everything reported, hidden first:
 
 ```sh
 npx wrangler d1 execute notaroutine-videos --remote --command \
-  "SELECT status, id, movement, label, url FROM videos WHERE status <> 'ok' ORDER BY status, movement"
+  "SELECT status, id, movement, url FROM videos WHERE status <> 'ok' ORDER BY status, movement"
 ```
 
 Only what is hidden and waiting on you:
 
 ```sh
 npx wrangler d1 execute notaroutine-videos --remote --command \
-  "SELECT id, movement, label, url FROM videos WHERE status LIKE 'hidden:%' ORDER BY movement"
+  "SELECT id, movement, url FROM videos WHERE status LIKE 'hidden:%' ORDER BY movement"
 ```
 
 Put one back, or take it down for good:
@@ -113,9 +113,9 @@ request logs would hold exactly what this API promises not to keep.
 |---|---|
 | D1 database and schema | **done** — created through the Cloudflare API |
 | `wrangler.toml` binding | **done** |
-| GitHub App authorisation | to do |
-| Workers Builds project | to do |
-| `api.notaroutine.life` | blocked on DNS, and disabled in config so it cannot fail a deploy |
+| GitHub App authorisation | **done** |
+| Workers Builds project | **done** — deploying from `main` |
+| `api.notaroutine.life` | **done** — zone on Cloudflare, route live in `wrangler.toml`, DNS record created by the deploy |
 
 ## The database — already done, do not re-run
 
@@ -138,19 +138,21 @@ Live: the `videos` table with all nine columns — `id`, `movement`, `url`,
 
 `npm run schema:local` seeds a local copy for `wrangler dev`.
 
-## Deploying: the two steps left
+## How the deploy is wired
 
-### 1. Authorise the GitHub App
+Both setup steps are done. This is a record of how it is set up, not a
+checklist to work through.
+
+### 1. The GitHub App
 
 Workers Builds connects through the **Cloudflare Workers and Pages** GitHub
-App. In **Workers & Pages → Create → Workers → Import a repository**, choose
-GitHub and authorise it against `mykyta-pla/training-log`. Granting it that one
-repository is enough; it does not need the account.
+App, authorised against `mykyta-pla/training-log` and that repository only. It
+does not have the account.
 
-If the repository does not appear in the list, the App was installed with
-"only select repositories" and this one was not among them — fix that in
-GitHub under **Settings → Applications → Cloudflare Workers and Pages →
-Configure**, not by re-authorising from the Cloudflare side.
+If the repository ever stops appearing on the Cloudflare side, the App has
+been narrowed to a set that no longer includes it — fix that in GitHub under
+**Settings → Applications → Cloudflare Workers and Pages → Configure**, not by
+re-authorising from the Cloudflare side.
 
 ### 2. Workers Builds settings
 
@@ -173,39 +175,35 @@ Workers Builds installs from `package.json` before running the deploy command.
 Wrangler is the only dependency, and there is no lockfile, so it resolves the
 latest 4.x each time.
 
-### Where it lands, for now
+### Where it lands
 
 ```
-https://notaroutine-api.plastomak-nikita.workers.dev
+https://api.notaroutine.life                            the site calls this
+https://notaroutine-api.plastomak-nikita.workers.dev    testing only
 ```
 
-`workers_dev = true` in `wrangler.toml` makes that explicit rather than
-leaving it to a default. **The site does not call it and must not be changed
-to.** `/videos/` keeps calling `api.notaroutine.life`, which does not resolve
-yet, so it keeps running its API-down path — that is the designed behaviour
-and not a fault to work around.
+The custom domain is the route in `wrangler.toml`, and the deploy that first
+carried it is what created the DNS record. The zone moved to Cloudflare
+(`paislee.ns.cloudflare.com`, `theo.ns.cloudflare.com`) and the apex A records
+for GitHub Pages stayed DNS-only, so Pages still serves the site itself and its
+certificate never went through Cloudflare.
 
-### The custom domain, when DNS moves
+`workers_dev = true` keeps the second hostname alive alongside it, as the way
+to tell a broken Worker apart from a broken DNS record: if workers.dev answers
+and the custom domain does not, the Worker is fine and the route or the record
+is not. **The site calls `api.notaroutine.life` and must not be pointed at
+workers.dev** — that was true while the domain was unreachable and it is still
+true now that it works.
 
-`wrangler.toml` has the route commented out, with the conditions written
-beside it. It binds `api.notaroutine.life` to the Worker and asks Cloudflare
-to create the DNS record, which Cloudflare can only do for a zone it runs.
-The zone is on Porkbun today, so leaving it enabled fails every deploy — the
-Worker uploads fine, the route cannot be created, and wrangler calls that a
-failed deploy.
+That line has to stay above `[[routes]]` in `wrangler.toml`. TOML attaches a
+bare key to whatever table header precedes it, so `workers_dev` written below
+the route block becomes a key inside the route and stops being a setting for
+the Worker at all.
 
-Uncomment it when **both** are true:
+### Adding the domain by hand instead
 
-1. The `notaroutine.life` zone is on Cloudflare — nameservers moved, zone
-   Active in the dashboard.
-2. The apex A records for GitHub Pages are **DNS-only** (grey cloud).
-   Proxying them puts Cloudflare in front of Pages, which is a separate
-   decision and breaks the Pages certificate if it happens by accident here.
-
-Then deploy. The alternative, adding the custom domain by hand in **Settings
-→ Domains & Routes**, does the same thing but leaves `wrangler.toml` lying
-about what is bound, so prefer the route block.
-
+Doing it in **Settings → Domains & Routes** binds the same hostname, but leaves
+`wrangler.toml` lying about what is bound. Prefer the route block.
 
 ## Telling deployed from deployed-but-broken
 
@@ -215,11 +213,13 @@ the checks that separate them.
 
 ### From a terminal
 
-Until DNS moves, run these against the workers.dev hostname; after it moves,
-against `api.notaroutine.life`. Everything else is identical.
+Run these against the custom domain — it is what the site calls, so it is the
+one that has to work. Re-run them against workers.dev only to place a failure:
+answering there and not here means the Worker is fine and the route or the DNS
+record is not.
 
 ```sh
-API=https://notaroutine-api.plastomak-nikita.workers.dev
+API=https://api.notaroutine.life
 
 # 1. the Worker answers at all
 curl -si $API/videos | head -5
@@ -240,7 +240,7 @@ curl -s $API/nope                         # → 404 with this API's own message
 | what you see | what it means |
 |---|---|
 | `{"videos":[]}` and a 200 | deployed, bound, working. An empty table is the correct answer today. |
-| Cloudflare error 1016 / 522, or DNS failure on `api.notaroutine.life` | expected until the zone moves and the route is uncommented. Use the workers.dev hostname. |
+| Cloudflare error 1016 / 522, or DNS failure | the route did not attach. Check `[[routes]]` survived the deploy, and that Domains & Routes lists `api.notaroutine.life`. If workers.dev answers, the Worker is healthy and this is the record. |
 | HTML rather than JSON | the hostname is resolving to something that is not this Worker |
 | `{"error":"The library is having a bad moment…"}` with a 500 | the Worker is running and the D1 binding is wrong — wrong id, or the deploy did not pick up `wrangler.toml` |
 | 200 but no `access-control-allow-origin` for this site's Origin | `ORIGIN` in `src/index.js` does not match the site; the browser will refuse the body even though curl sees it |
@@ -260,10 +260,11 @@ note *"The shared library isn't reachable"*. Adding a movement still works and
 still says so: *"… is in your library and the builder will draw it. The shared
 library could not be reached, so nobody else has it yet."*
 
-**This is the state the site is in today and will stay in until DNS moves,
-even once the Worker is deployed and healthy on workers.dev.** The page is
-correct; the hostname it calls does not exist yet. Confirm the Worker with
-curl against workers.dev rather than by looking at `/videos/`.
+This was the site's normal state for as long as `api.notaroutine.life` did not
+resolve, so it is no longer proof of anything on its own — the page says the
+same thing whether the Worker is down, the route came off, or the deploy
+failed. Separate them with curl, from the section above, not by reading the
+page.
 
 **Deployed but half-working — the cases worth naming:**
 
