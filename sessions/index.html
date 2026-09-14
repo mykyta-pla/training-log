@@ -90,6 +90,7 @@
       <a href="../sessions/" aria-current="page">Sessions</a>
       <a href="../videos/">Videos</a>
       <a href="../movements/">Movements</a>
+      <a href="../protocols/">Protocols</a>
       <a href="../training/">Training</a>
       <a href="../nutrition/">Nutrition</a>
       <a href="../supplements/">Supplements</a>
@@ -279,6 +280,7 @@ function logBody(s) {
               ${roleTag(it)}
               ${techTag(it)}
               ${it.why ? `<span class="why">${esc(it.why)}</span>` : ''}
+              ${sourceTag(it)}
             </span>
             <a class="vidbtn" target="_blank" rel="noopener"
                href="${esc(videoFor(it.name))}"

@@ -465,6 +465,26 @@ td.num { font: 500 14.5px/1.5 var(--mono); color: var(--ink); white-space: nowra
   letter-spacing: .12em; text-transform: uppercase;
 }
 
+/* Where a movement came from. Only fifteen movements in the library have a named
+   protocol behind them; the rest show nothing at all, because an absent source is
+   information and "no source" on two hundred lines is noise.
+
+   Contested is the only grade that takes the signal colour. The other three describe
+   the state of the evidence; contested says the literature disagrees, which is the
+   one thing you would want to know before doing it. */
+.src {
+  display: block;
+  margin-top: 4px;
+  font: 400 11.5px/1.5 var(--mono);
+  color: var(--prose-2);
+}
+.src + .src { margin-top: 2px; }
+.src a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.src a:hover { color: var(--ink); }
+.ev { font-weight: 500; }
+.ev-contested { color: var(--signal); }
+.sas, .sap { display: block; color: var(--faint); }
+
 /* Plane and demand on a library entry. Quieter than the technique rating, because
    they describe the movement rather than warn you about it. */
 .axis {

@@ -299,7 +299,158 @@ const LIB = [
   {n:'Dumbbell thruster',    p:'fin', e:2, a:['overhead'],     d:'4 × 10', t:'p', r:'sec', dm:3, pl:'sag'},
   {n:'Jumping lunge',        p:'fin', e:0, a:['jump'],         d:'4 × 10 each side', t:'p', r:'acc', dm:3, pl:'sag', u:1},
   {n:'Rowing, steady',       p:'fin', e:3, a:['grip'],         d:'8 min at a conversational pace', t:'s', r:'acc', dm:2, pl:'sag'},
+
+  /* ===== HEAVY SLOW RESISTANCE ============================================
+     The loading scheme is the movement here: heavy, full range, roughly three
+     seconds up and three seconds down. The tempo is the prescription, which is
+     why these carry their own set counts rather than a rep range. */
+  {n:'Heavy slow leg press',   p:'squat', e:3, a:[],           d:'4 × 6, 3 sec up and 3 sec down', t:'s', r:'sec', dm:3, pl:'sag'},
+  {n:'Heavy slow calf raise',  p:'acc',   e:3, a:[],           d:'4 × 8, 3 sec up and 3 sec down', t:'s', r:'acc', dm:3, pl:'sag'},
+  {n:'Heavy slow split squat', p:'squat', e:2, a:['deepknee'], d:'4 × 6 each side, 3 sec down', t:'p', r:'sec', dm:3, pl:'sag', u:1},
 ];
+
+/* ============================================================== provenance ==
+
+   A movement carries a source only when there is a named, published protocol
+   behind it and a link anyone can open and check. Five protocols qualified.
+   Everything else in the library is unsourced, which is the honest state for a
+   back squat — nobody published it, it just exists.
+
+   What this is not: attribution to a person. A search for documented athlete
+   routines returned only aggregators with no primary source behind any of them.
+   Repeating that on a site built around an honesty audit would be the first
+   dishonest thing on it. See the rule in CLAUDE.md.
+
+   url is primary or near-primary: the body that publishes the protocol, or the
+   trial. evidence is strong | moderate | contested | untested, and contested is
+   a real value that gets used. note says what was measured, in whom, and how
+   many — never "proven". */
+
+const SOURCES = {
+
+  fifa11: {
+    name:     'FIFA 11+',
+    sport:    'football — also trialled in basketball',
+    what:     'A 20-minute warm-up published by FIFA’s medical research centre. Three parts: running, then strength / plyometrics / balance, then running with changes of direction.',
+    evidence: 'strong',
+    note:     'A 2017 systematic review and meta-analysis of the FIFA 11 and 11+ programmes found a reduction in overall injury rate in football. A separate cluster-randomised trial in elite male basketball players found the same programme reduced injuries in a sport it was not designed for.',
+    url:      'https://pubmed.ncbi.nlm.nih.gov/28087568/',
+    extra:    'https://pubmed.ncbi.nlm.nih.gov/22415208/',
+    manual:   'https://www.f-marc.com/fifa-11/',
+  },
+
+  nordic: {
+    name:     'Nordic hamstring protocol',
+    sport:    'football',
+    what:     'Partner- or strap-anchored eccentric knee flexion. Lower under control, catch yourself, push back up.',
+    evidence: 'contested',
+    note:     'A 2019 meta-analysis across 8,459 athletes reported that injury-prevention programmes including the Nordic hamstring exercise halved hamstring injury rates. A 2021 methodological reappraisal argued the pooled effect is inconclusive because of how the original analyses were constructed. Both positions are live; this is not a settled question.',
+    url:      'https://pubmed.ncbi.nlm.nih.gov/34520846/',
+  },
+
+  copenhagen: {
+    name:     'Adductor Strengthening Programme',
+    sport:    'football',
+    what:     'The Copenhagen adduction exercise, built up over weeks from a short lever to a long one.',
+    evidence: 'moderate',
+    note:     'A cluster-randomised controlled trial in male football players found the programme reduced the prevalence of groin problems across a season.',
+    url:      'https://pubmed.ncbi.nlm.nih.gov/29891614/',
+  },
+
+  norwegian4x4: {
+    name:     'Norwegian 4×4',
+    sport:    'endurance science — NTNU, Trondheim',
+    what:     'Four intervals of four minutes near maximum, three minutes of active recovery between them.',
+    evidence: 'strong',
+    note:     'The 2007 trial compared four training protocols at matched work and found high-intensity 4×4 intervals raised VO₂max substantially more than moderate continuous training. VO₂max is among the strongest modifiable predictors of all-cause mortality.',
+    url:      'https://pubmed.ncbi.nlm.nih.gov/17414804/',
+  },
+
+  hsr: {
+    name:     'Heavy Slow Resistance',
+    sport:    'sports medicine — tendon rehabilitation',
+    what:     'Heavy loading through a full range at a deliberate tempo, roughly three seconds up and three seconds down. A loading scheme rather than a movement.',
+    evidence: 'moderate',
+    note:     'A randomised controlled trial in Achilles tendinopathy found heavy slow resistance produced outcomes comparable to eccentric training at twelve weeks, with better patient satisfaction and far lower time cost.',
+    url:      'https://pubmed.ncbi.nlm.nih.gov/26018970/',
+  },
+
+};
+
+/* Keyed by the movement name exactly as it appears in LIB. A movement not listed
+   here has no source and shows nothing — an absent source is information too, and
+   "no source" written out would be noise on two hundred lines. */
+const SOURCED = {
+
+  // FIFA 11+
+  'Plank':                    {s:'fifa11', as:'The Bench'},
+  'Side plank':               {s:'fifa11', as:'Sideways Bench'},
+  'Side plank with hip dip':  {s:'fifa11', as:'Sideways Bench — raise and lower hip'},
+  'Nordic hamstring curl':    {s:'fifa11', as:'Hamstrings, advanced'},
+  'Nordic curl, assisted':    {s:'fifa11', as:'Hamstrings, beginner'},
+  'Walking lunge':            {s:'fifa11', as:'Walking Lunges'},
+  'Bodyweight squat':         {s:'fifa11', as:'Squats with toe raise', approx:'The 11+ version adds a calf raise at the top.'},
+  'Box jump':                 {s:'fifa11', as:'Box Jumps'},
+  'Lateral bound':            {s:'fifa11', as:'Lateral Jumps', approx:'The 11+ version is continuous for 30 seconds rather than sets of bounds.'},
+
+  // Nordic hamstring protocol
+  'Slider hamstring curl':    {s:'nordic', approx:'Same eccentric emphasis, different implement. The trials used the partner-anchored version.'},
+
+  // Adductor Strengthening Programme
+  'Copenhagen plank':                 {s:'copenhagen', as:'Copenhagen adduction, long lever'},
+  'Copenhagen plank, short lever':    {s:'copenhagen', as:'Copenhagen adduction, short lever'},
+
+  // Heavy Slow Resistance
+  'Heavy slow leg press':     {s:'hsr'},
+  'Heavy slow calf raise':    {s:'hsr'},
+  'Heavy slow split squat':   {s:'hsr'},
+
+};
+
+/* The two Nordic entries belong to two protocols at once: the movement is the
+   subject of the Nordic trials, and it is also part of the 11+. Kept as a second
+   map rather than making every SOURCED value an array, so the common case — one
+   protocol — stays a plain object. sourcesFor() is the only way either is read,
+   so both are always reachable and neither can be forgotten. */
+const ALSO_SOURCED = {
+  'Nordic hamstring curl': {s:'nordic'},
+  'Nordic curl, assisted': {s:'nordic'},
+};
+
+// Every protocol a movement belongs to, in the order they should be read.
+// Empty for almost everything, which is the point.
+function sourcesFor(name) {
+  return [SOURCED[name], ALSO_SOURCED[name]]
+    .filter(m => m && SOURCES[m.s])
+    .map(m => ({...m, src: SOURCES[m.s]}));
+}
+
+// Every movement belonging to a protocol, for the protocols page.
+const movementsFrom = key => LIB
+  .filter(x => sourcesFor(x.n).some(m => m.s === key))
+  .filter((x, i, all) => all.findIndex(y => y.n === x.n) === i);
+
+/* movements.js shares global scope with the page that loads it, and both the builder
+   and Sessions already declare `esc` — a second const of that name is a redeclaration
+   error that takes the whole page down. Hence a name of its own. */
+const hesc = v => String(v == null ? '' : v)
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/* The provenance line under a movement on a card. Nothing at all when there is no
+   source. "contested" is the only grade that takes the signal colour — it is the
+   only one that is a warning rather than a description. */
+function sourceTag(it) {
+  const name = it && (it.name || it.n);
+  return sourcesFor(name).map(m => {
+    const s = m.src;
+    const as = (m.as && m.as !== name)
+      ? ` <span class="sas">Called &ldquo;${hesc(m.as)}&rdquo; there.</span>` : '';
+    const ap = m.approx ? ` <span class="sap">${hesc(m.approx)}</span>` : '';
+    return `<span class="src">From <a href="${hesc(s.url)}" target="_blank" rel="noopener">`
+         + `${hesc(s.name)}</a> &mdash; ${hesc(s.sport.split(' — ')[0])} &middot; evidence: `
+         + `<b class="ev ev-${hesc(s.evidence)}">${hesc(s.evidence)}</b>${as}${ap}</span>`;
+  }).join('');
+}
 
 /* A starting load in kg for someone of ordinary strength, used to prefill the log on a
    saved session so there is something to correct rather than an empty box. Nobody's real

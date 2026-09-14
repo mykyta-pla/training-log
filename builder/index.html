@@ -90,6 +90,7 @@
       <a href="../sessions/">Sessions</a>
       <a href="../videos/">Videos</a>
       <a href="../movements/">Movements</a>
+      <a href="../protocols/">Protocols</a>
       <a href="../training/">Training</a>
       <a href="../nutrition/">Nutrition</a>
       <a href="../supplements/">Supplements</a>
@@ -960,6 +961,7 @@ function render(S) {
               ${it.ago !== null && it.ago !== undefined ? `<span class="ago">${it.ago === 0 ? 'last session' : it.ago === 1 ? '2 sessions ago' : (it.ago+1)+' sessions ago'}</span>` : ''}
               ${prev ? `<span class="prev">last: ${esc(prev.load)}</span>` : ''}
               ${it.why ? `<span class="why">${esc(it.why)}</span>` : ''}
+              ${sourceTag(it)}
             </span>
             <a class="vidbtn" target="_blank" rel="noopener"
                href="${esc(videoFor(it.name))}"

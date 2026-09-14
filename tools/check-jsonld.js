@@ -72,7 +72,7 @@ const REQUIRED = {
 };
 
 const PAGES = ['index.html', 'builder/index.html', 'sessions/index.html', 'videos/index.html',
-               'movements/index.html', 'training/index.html', 'nutrition/index.html',
+               'movements/index.html', 'protocols/index.html', 'training/index.html', 'nutrition/index.html',
                'supplements/index.html', 'travel/index.html', 'privacy/index.html',
                'private/index.html'];
 
@@ -105,8 +105,13 @@ function walk(node, page, trail) {
     if (node[need] === undefined) fail(page, `${trail} (${type}) is missing ${need}`);
   }
   for (const [k, v] of Object.entries(node)) {
+    // An off-site link is normally a mistake — this site's markup describes this site.
+    // The exception is a citation: /protocols/ names five protocols published by other
+    // people, and the whole point of the entry is the link to the trial. So `url` on a
+    // node with no @id of ours is allowed to leave, and nothing else is.
+    const cites = k === 'url' && type === 'ExercisePlan' && !node['@id'];
     if (typeof v === 'string' && /^https?:\/\//.test(v) && !v.startsWith(SITE) &&
-        !v.startsWith('https://schema.org')) {
+        !v.startsWith('https://schema.org') && !cites) {
       fail(page, `${trail}.${k} points off-site: ${v}`);
     }
     if (typeof v === 'object') walk(v, page, `${trail}.${k}`);
