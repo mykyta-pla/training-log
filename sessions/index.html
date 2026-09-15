@@ -265,7 +265,7 @@ function logBody(s) {
 
   (s.blocks || []).forEach((b, bi) => {
     h += `<section class="sblk"><h3>${esc(b.title)} <span class="mins">${b.mins} min</span></h3>
-          <p class="sub-note">${esc(b.sub)}</p>`;
+          <p class="sub-note">${esc(b.sub)}${b.src ? sourceLine(b.src) : ''}</p>`;
     if ((b.items || []).length) {
       h += '<ul class="exlist">';
       b.items.forEach((it, ii) => {

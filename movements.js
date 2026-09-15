@@ -436,6 +436,18 @@ const movementsFrom = key => LIB
 const hesc = v => String(v == null ? '' : v)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
+/* The same line, for something that is not a movement. The Norwegian 4×4 is a cardio
+   option in the builder rather than a library entry, so nothing in SOURCED can point at
+   it — but it is one of the five protocols and the block that runs it should say so.
+   Takes a SOURCES key; anything without one shows nothing, as everywhere else. */
+function sourceLine(key) {
+  const s = SOURCES[key];
+  if (!s) return '';
+  return `<span class="src">From <a href="${hesc(s.url)}" target="_blank" rel="noopener">`
+       + `${hesc(s.name)}</a> &mdash; ${hesc(s.sport.split(' — ')[0])} &middot; evidence: `
+       + `<b class="ev ev-${hesc(s.evidence)}">${hesc(s.evidence)}</b></span>`;
+}
+
 /* The provenance line under a movement on a card. Nothing at all when there is no
    source. "contested" is the only grade that takes the signal colour — it is the
    only one that is a warning rather than a description. */
@@ -659,7 +671,8 @@ function customMovements() {
     return Array.isArray(v)
       ? v.filter(x => x && x.n && x.p)
           .map(x => ({...x, a: x.a || [], e: +x.e || 0, t: x.t || 's',
-                      r: ROLES[x.r] ? x.r : 'sec', mine: true}))
+                      r: ROLES[x.r] ? x.r : 'sec',
+                      dm: [1,2,3].includes(+x.dm) ? +x.dm : 2, mine: true}))
       : [];
   } catch (_) { return []; }
 }
@@ -688,7 +701,7 @@ function communityMovements() {
     return Array.isArray(v)
       ? v.filter(x => x && x.n && x.p)
           .map(x => ({...x, a: x.a || [], e: +x.e || 0, t: x.t || 's',
-                      r: 'acc', community: true}))
+                      r: 'acc', dm: [1,2,3].includes(+x.dm) ? +x.dm : 2, community: true}))
       : [];
   } catch (_) { return []; }
 }
@@ -829,6 +842,39 @@ function orderStrength(items) {
    Only the first main slot stays a main. A five-exercise block wraps back round to the
    start of the sequence, and two focuses merged round-robin can put two main slots in a
    row; both would otherwise give a second main. */
+/* ============================================================ demand levels ==
+
+   dm rates how hard a movement is; this is the control that reads it. A level is a
+   preference, not a filter: each one names the demands it wants, and if the pool cannot
+   supply them the next step down the ladder is tried, ending unrestricted. A block is
+   never returned empty over this — a mobility block at Hard with nothing demanding left
+   in the pool gives you what there is, not nothing.
+
+   Every ladder ends at null, which means "anything". That last step is what makes this a
+   preference rather than a filter, and it is why there is no failure case to handle. */
+const DEMANDS = {
+  light:   {label: 'Light',   note: 'gentle — a red-recovery day', want: [1, 2]},
+  working: {label: 'Working', note: 'real work, repeatable',       want: [2, 3]},
+  hard:    {label: 'Hard',    note: 'it costs you something',      want: [3]},
+};
+const DEMAND_ORDER = ['light', 'working', 'hard'];
+const demandRank = l => Math.max(0, DEMAND_ORDER.indexOf(l));
+const demandLevel = l => (DEMANDS[l] ? l : 'working');
+
+// The steps to try, in order. Falling towards the middle rather than towards easy: Hard
+// settles for Working before it settles for anything, and so does Light.
+function demandSteps(level) {
+  const l = demandLevel(level);
+  const steps = [DEMANDS[l].want];
+  if (l !== 'working') steps.push(DEMANDS.working.want);
+  steps.push(null);
+  return steps;
+}
+
+// Readiness outranks the control. Red caps everything at Light, amber at Working.
+const capDemand = (level, cap) =>
+  (cap && demandRank(level) > demandRank(cap)) ? cap : demandLevel(level);
+
 /* Two things a session should have, if the pool can supply them.
 
    The library was about 95% sagittal before v2, and a draw left to itself will
@@ -855,10 +901,20 @@ function nudge(items, slots, test, take, used, protect) {
   for (let i = items.length - 1; i >= 0; i--) {
     const was = items[i];
     if ((protect || []).some(p => p(was) && items.filter(p).length === 1)) continue;
+
+    /* A repair may change the movement but not the coverage. On an either|or slot whose
+       side nothing else is holding, the replacement has to stay on that side: swapping the
+       only hinge for a squat satisfies the plane at the cost of never training a hinge,
+       which is the rule this one sits under. Where no such candidate exists the repair
+       moves on to the next movement rather than taking the trade. */
+    const sides = String(slots[i].p).split('|');
+    const lastOfSide = sides.length > 1 && !items.some((x, j) => j !== i && x.p === was.p);
+    const want = lastOfSide ? (m => test(m) && m.p === was.p) : test;
+
     used.delete(was.name);
     // the other patterns still standing, so a repair cannot undo the either|or rule
     const others = new Set(items.filter((_, j) => j !== i).map(x => x.p).filter(Boolean));
-    const alt = take(slots[i].p, slots[i].r, others, test);
+    const alt = take(slots[i].p, slots[i].r, others, want);
     if (alt) { items[i] = alt; return true; }
     used.add(was.name);
   }

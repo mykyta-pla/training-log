@@ -166,6 +166,17 @@
         <b>Accessory</b><span>assistance and isolation</span></button>
     </div>
 
+    <p class="hint">How hard it is &mdash; separate from technique. A supine twist asks for
+    no skill and costs nothing; a Jefferson curl asks for both.</p>
+    <div class="chips stack" id="a_dm" role="group" aria-label="Demand">
+      <button type="button" class="chip tall" data-v="1">
+        <b>Light</b><span>you could do it on a red-recovery day</span></button>
+      <button type="button" class="chip tall on" data-v="2">
+        <b>Working</b><span>real work, repeatable</span></button>
+      <button type="button" class="chip tall" data-v="3">
+        <b>Hard</b><span>it costs you something</span></button>
+    </div>
+
     <p class="hint">Tag it if it involves any of these</p>
     <div class="chips multi" id="a_avoid" role="group" aria-label="Avoid tags">
       <button type="button" class="chip" data-v="deepknee">Deep knee flexion</button>
@@ -296,7 +307,7 @@ function chipGroup(id, multi) {
     if (id === 'a_type') renderAreas();
   });
 }
-['a_type', 'a_equip', 'a_area', 'a_tech', 'a_role'].forEach(id => chipGroup(id, false));
+['a_type', 'a_equip', 'a_area', 'a_tech', 'a_role', 'a_dm'].forEach(id => chipGroup(id, false));
 chipGroup('a_avoid', true);
 
 function renderAreas() {
@@ -329,6 +340,7 @@ $('#add').addEventListener('submit', async e => {
   // Secondary is pre-selected rather than assumed silently: you know whether what you are
   // adding is your main lift, and the builder has no way to work it out.
   const role = one('a_role') || 'sec';
+  const demand = +(one('a_dm') || 2);
 
   if (!url)  return say('Paste the link first — that is the point of the entry.', true);
   if (!allowed(url)) return say(
@@ -344,7 +356,7 @@ $('#add').addEventListener('submit', async e => {
   const avoid = many('a_avoid');
 
   const list = customMovements();
-  list.unshift({n: name, p, e: equip, a: avoid, d: dose, t: tech, r: role, url,
+  list.unshift({n: name, p, e: equip, a: avoid, d: dose, t: tech, r: role, dm: demand, url,
                 mine: true, added: new Date().toISOString()});
   if (!saveCustomMovements(list)) return say('Could not save — this browser refused storage.', true);
 
@@ -354,6 +366,7 @@ $('#add').addEventListener('submit', async e => {
   $$('#a_avoid .chip').forEach(c => c.classList.remove('on'));
   $$('#a_tech .chip').forEach(c => c.classList.remove('on'));
   $$('#a_role .chip').forEach(c => c.classList.toggle('on', c.dataset.v === 'sec'));
+  $$('#a_dm .chip').forEach(c => c.classList.toggle('on', c.dataset.v === '2'));
   renderMine();
 
   $('#a_go').disabled = true;

@@ -22,7 +22,8 @@ vm.runInContext(fs.readFileSync('movements.js', 'utf8') + `
   ;globalThis.__m = {LIB, FOCUS, REPS, ROLES, SLOT_ROLES, LOGGABLE, focusSequence,
     slotPool, drawStrength, orderStrength, swapNote, detailFor, roleOf, eligible,
     pickFresh, recencyMap, itemRole, movementFor, customMovements, allMovements,
-    VARIETY, withSets, ownsSets, targetReps};`, sandbox);
+    VARIETY, withSets, ownsSets, targetReps, DEMANDS, demandSteps, capDemand,
+    demandRank};`, sandbox);
 const M = sandbox.__m;
 
 let failed = 0, ran = 0;
@@ -185,6 +186,138 @@ test('a sec or acc slot never draws a main', () => {
     const {pool} = M.slotPool(slot, 3, [], used);
     assert.ok(pool.every(x => M.roleOf(x) !== 'main'), slot.p + '/' + slot.r + ' offered a main');
   }
+});
+
+console.log('\ndemand');
+
+// the builder's take(), minus the DOM: the ladder is ambient, so drawStrength is untouched
+function dmTaker(equip, level, avoid) {
+  const used = new Set();
+  const steps = M.demandSteps(level);
+  const take = (pattern, role, drawn, test) => {
+    let x = null;
+    // a repair is the softest rule here and may not climb the ladder to satisfy itself
+    for (const allow of (test ? steps.slice(0, 1) : steps)) {
+      const dmOk = allow ? (m => allow.includes(m.dm)) : null;
+      const filter = (test && dmOk) ? (m => test(m) && dmOk(m)) : (test || dmOk);
+      const pool = role
+        ? M.slotPool({p: pattern, r: role}, equip, avoid || [], used, drawn, filter).pool
+        : M.eligible(pattern, equip, avoid || [], used).filter(m => !filter || filter(m));
+      x = M.pickFresh(pool, new Map());
+      if (x) break;
+    }
+    if (!x) return null;
+    used.add(x.n);
+    return {name: x.n, pattern, p: x.p, detail: x.d, t: x.t, r: M.roleOf(x), e: x.e,
+            a: x.a || [], pl: x.pl, u: x.u, dm: x.dm};
+  };
+  take.used = used;
+  return take;
+}
+// one mobility block, drawn the way the builder draws it
+const mobBlock = (level, equip = 3, n = 4) => {
+  const take = dmTaker(equip, level);
+  const areas = ['shoulder', 'hip', 'spine', 'neck'], out = [];
+  for (let i = 0; i < n; i++) { const it = take('m_' + areas[i % areas.length], null); if (it) out.push(it); }
+  return out;
+};
+
+test('the ladder falls towards the middle, and ends unrestricted', () => {
+  const steps = l => JSON.stringify(M.demandSteps(l));
+  assert.strictEqual(steps('hard'),    '[[3],[2,3],null]');
+  assert.strictEqual(steps('light'),   '[[1,2],[2,3],null]');
+  assert.strictEqual(steps('working'), '[[2,3],null]');
+  // an unknown level is Working, not a crash and not a filter that matches nothing
+  assert.strictEqual(steps('nonsense'), '[[2,3],null]');
+});
+
+test('at Hard a mobility block draws demanding movements where the area has them', () => {
+  // m_neck tops out at dm 2 — the ladder settles for Working there rather than coming
+  // back empty, which is the preference doing its job, not a failure
+  const hasHard = p => M.LIB.some(x => x.p === p && x.dm === 3);
+  for (let i = 0; i < 200; i++) {
+    const items = mobBlock('hard');
+    assert.strictEqual(items.length, 4, 'the block came back short');
+    for (const x of items)
+      if (hasHard('m_' + ['shoulder','hip','spine','neck'].find(a => 'm_' + a === x.pattern)?.replace(/^/, '') ))
+        assert.strictEqual(x.dm, 3, x.name + ' is dm ' + x.dm + ' where the area has dm 3');
+  }
+});
+
+test('an area with nothing demanding settles for Working rather than emptying', () => {
+  const neckMax = Math.max(...M.LIB.filter(x => x.p === 'm_neck').map(x => x.dm));
+  assert.strictEqual(neckMax, 2, 'm_neck gained a dm 3 movement — tighten this test');
+  const take = dmTaker(3, 'hard');
+  const out = [];
+  for (let i = 0; i < 3; i++) { const it = take('m_neck', null); if (it) out.push(it); }
+  assert.strictEqual(out.length, 3, 'Hard emptied the neck area');
+  assert.ok(out.every(x => x.dm === 2), 'settled below Working: ' + out.map(x => x.dm));
+});
+
+test('at Light nothing demanding is drawn', () => {
+  for (let i = 0; i < 200; i++)
+    for (const x of mobBlock('light'))
+      assert.ok(x.dm <= 2, x.name + ' is dm ' + x.dm + ' in a Light block');
+});
+
+test('a Light strength block stays at or under dm 2', () => {
+  for (let i = 0; i < 200; i++) {
+    const t = dmTaker(3, 'light');
+    for (const x of M.drawStrength(M.focusSequence(['full']), 5, t, [], t.used))
+      assert.ok(x.dm <= 2, x.name + ' is dm ' + x.dm + ' in a Light block');
+  }
+});
+
+test('demand is a preference — a block is never returned empty over it', () => {
+  // bands only, avoiding most of the library: whatever is left, Hard still fills the block
+  for (const level of ['light', 'working', 'hard']) {
+    const take = dmTaker(1, level, ['floor', 'grip', 'overhead', 'deepknee', 'jump']);
+    const out = [];
+    for (let i = 0; i < 3; i++) { const it = take('m_neck', null); if (it) out.push(it); }
+    assert.ok(out.length >= 1, level + ' emptied the block');
+  }
+});
+
+test('readiness outranks the control', () => {
+  assert.strictEqual(M.capDemand('hard', 'light'), 'light');
+  assert.strictEqual(M.capDemand('hard', 'working'), 'working');
+  assert.strictEqual(M.capDemand('light', 'working'), 'light');   // a cap only lowers
+  assert.strictEqual(M.capDemand('hard', null), 'hard');
+});
+
+test('on a red band nothing above dm 2 appears anywhere', () => {
+  for (const asked of ['light', 'working', 'hard']) {
+    const level = M.capDemand(asked, 'light');           // red caps at Light
+    for (let i = 0; i < 120; i++) {
+      for (const x of mobBlock(level))
+        assert.ok(x.dm <= 2, `${x.name} dm ${x.dm} got through with ${asked} capped to ${level}`);
+      const t = dmTaker(3, level);
+      for (const x of M.drawStrength(M.focusSequence(['full']), 5, t, [], t.used))
+        assert.ok(x.dm <= 2, `${x.name} dm ${x.dm} got through in strength`);
+    }
+  }
+});
+
+test('demand does not break the rules above it', () => {
+  for (const level of ['light', 'working', 'hard']) {
+    for (let i = 0; i < 150; i++) {
+      const t = dmTaker(3, level);
+      const items = M.drawStrength(M.focusSequence(['full']), 5, t, [], t.used);
+      assert.strictEqual(items.length, 5, level + ': block came back short');
+      assert.ok(items.filter(x => x.r === 'main').length <= 1, level + ': more than one main');
+      if (items.some(x => x.r === 'main')) assert.strictEqual(items[0].r, 'main', level + ': main not first');
+      assert.strictEqual(new Set(items.map(x => x.name)).size, items.length, level + ': drew a movement twice');
+      const pats = items.map(x => x.p);
+      assert.ok(pats.includes('hinge') && pats.includes('squat'), level + ': either|or broken — ' + pats);
+    }
+  }
+});
+
+test('the library serves Hard everywhere except the neck, which is known', () => {
+  for (const p of ['m_shoulder', 'm_hip', 'm_spine', 'core', 'fin', 'hinge', 'squat', 'push', 'pull'])
+    assert.ok(M.LIB.some(x => x.p === p && x.dm === 3), 'nothing demanding in ' + p);
+  assert.ok(!M.LIB.some(x => x.p === 'm_neck' && x.dm === 3),
+    'm_neck gained a dm 3 movement — the Hard fallback test above assumes it has none');
 });
 
 console.log('\nvariety: plane and unilateral');
