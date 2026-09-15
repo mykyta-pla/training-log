@@ -45,14 +45,27 @@ about it. If you are looking for something to quote or cite, it is here.
   than argued away.
 
 - **The movement library** — /movements/
-  86 movements grouped by what they train, each with the least equipment it
+  225 movements grouped by what they train, each with the least equipment it
   needs, either its prescription or an ordinary starting load, and a technique
   rating: straightforward (pick it up and do it), practised (you should have
-  done it before), coached (learn it from a person, not a video). Seven are
-  rated coached. The rating is about the skill a movement demands rather than
+  done it before), coached (learn it from a person, not a video). Twenty-six are
+  rated coached. Each also carries the plane it works in — 72 are not
+  forward-and-back — and whether one side works at a time, which 79 do. The rating is about the skill a movement demands rather than
   how hard it feels, which is a distinction most exercise databases do not
   make. Generated from the same file the builder draws from, so the page and
   the tool cannot disagree.
+
+- **Protocols** — /protocols/
+  The five published protocols any movement here is allowed to cite: the FIFA
+  11+, the Nordic hamstring protocol, the Copenhagen Adductor Strengthening
+  Programme, the Norwegian 4×4 and Heavy Slow Resistance. For each one: what it
+  is, what the trial measured and in whom, a link to the trial or to the body
+  that publishes it, and which movements in the library come from it. Fifteen
+  movements out of 228 carry a source; everything else carries none, which is
+  the honest state for a back squat. One of the five is graded contested
+  because the literature disagrees, and the page says which two have no trial
+  behind the specific movements drawn from them. No movement on this site is
+  attributed to a person as an endorsement.
 
 - **The session builder** — /builder/
   A tool, not an article. Set a duration, the equipment in the room, the

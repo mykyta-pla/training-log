@@ -67,14 +67,40 @@ audience. The N=1 voice does not change.
   slot that can't fill its role settles for a lower one rather than
   leaving a hole, and nothing but a main slot may draw a main. The
   strength block is written heaviest first, and coached before
-  straightforward within a role, so skill work happens fresh.
+  straightforward within a role, so skill work happens fresh. Where a
+  slot names either of two patterns and the sequence comes back to it,
+  it prefers the side the block has not used yet — a full body session
+  does not get to train the squat twice and skip the hinge. That is a
+  tie-break inside a role, never above it.
 - A strength movement's prescription lives on the movement, like a
   mobility one's already does. Reps keyed by pattern are a fallback for
   a movement that has none, not the normal path: a deadlift and a good
   morning share a pattern and must not share their numbers.
 - The shared library has no role column, so a movement someone else
-  shared is drawn as an accessory. Giving it a role needs the column,
-  and the column needs the owner's approval above.
+  shared is drawn as an accessory. You pick the role for your own
+  movements on the add form and it stays in this browser; it is not
+  sent. Giving a shared movement a role needs the column, and the
+  column needs the owner's approval above. This has been asked and
+  the answer is no — do not propose it again unless the owner raises it.
+- A movement may carry a source only when there is a named published
+  protocol behind it and a link that resolves to a primary or
+  near-primary source — the publishing body, or the trial. Not a blog,
+  not an aggregator, not a content farm. A movement with no protocol
+  behind it shows nothing: an absent source is information, and "no
+  source" written out is noise.
+- Never attribute a movement to a named person as an endorsement.
+  "Recommended by <athlete>" is not permitted on this site, in any
+  layer, regardless of what a source appears to say. Reporting a
+  documented fact with a primary citation is permitted; implying
+  endorsement is not.
+- Evidence grades are strong | moderate | contested | untested.
+  Contested must stay available and must be used where the literature
+  disagrees. It is the only grade that takes the signal colour, because
+  it is the only one that is a warning rather than a description.
+- The excluded list at the bottom of the provenance block is
+  deliberate. Do not add sources for FRC/CARs, ATG/knees-over-toes or
+  the Jefferson curl: named systems, no located trials. The movements
+  stay, unsourced.
 - The builder draws in three tiers and never mixes them: the movements
   you added, then the ones this site ships with, then — only if you
   switched them on, and the switch is off by default — the ones other
@@ -148,6 +174,9 @@ videos/             paste a link, tag it, and it joins the library — your
                     movements are drawn before the defaults (tl.custom)
 movements/          the whole movement library as plain HTML — generated from
                     movements.js by tools/build-library.js, never edited by hand
+protocols/          the five published protocols a movement may cite, what each
+                    trial measured, and which movements come from it — the entries
+                    are generated from movements.js by tools/build-library.js
 training/           structure, mobility menu, variability-first
 nutrition/          restaurant and business-lunch playbook
 supplements/        honesty audit with evidence grades
@@ -159,8 +188,8 @@ worker/             the api.notaroutine.life Worker — the shared video library
                     wrangler and a package.json live here, never at the root
 style.css           the whole design system
 tools/              repo scripts, never served: the og card, the sitemap, the
-                    movement library block in movements/, the JSON-LD check,
-                    the session draw check
+                    generated blocks in movements/ and protocols/, the JSON-LD
+                    check, the session draw check
 
 ## Before you finish
 - Test at 390px width. No horizontal overflow.

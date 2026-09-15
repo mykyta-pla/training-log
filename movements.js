@@ -1,124 +1,456 @@
 /* The movement library. Shared by the builder and the video library — one source of truth. */
 
-/* Every movement carries three axes beside its pattern:
+/* Every movement carries five axes beside its pattern:
 
-   e  equipment, 0–3      the least kit it needs
-   t  technique, s|p|c    how much skill it asks for, not how hard it feels
-   r  role, main|sec|acc  what it can carry in a session
+   e   equipment, 0–3       the least kit it needs
+   t   technique, s|p|c     how much skill it asks for, not how hard it feels
+   r   role, main|sec|acc   what it can carry in a session
+   dm  demand, 1–3          how hard it is, which technique could never say:
+                            1 you could do it on a red-recovery day, 2 real work
+                            and repeatable, 3 it costs you something. A supine
+                            twist is t:'s' dm:1; a Jefferson curl is t:'c' dm:3.
+   pl  plane                'sag' forward and back, 'front' side to side,
+                            'trans' rotation
+   u   unilateral           1 when one side works at a time, absent otherwise
+   sp  sport                'racket', 'bike', 'calisthenics' — only where the
+                            movement is genuinely preparatory, not wishful
 
-   Role is independent of the other two. A back squat is a main because it is the
-   heaviest, most systemically demanding thing you would do that day — not because
-   it is coached, and not because it needs a rack. A goblet squat needs the same
-   pattern and less skill and is still only secondary, because its loading ceiling
-   is low. Role decides which slot a movement may fill and what order the block is
-   written in; equipment and avoid tags decide whether it may appear at all.
+   Role is independent of the other four. A back squat is a main because it is
+   the heaviest, most systemically demanding thing you would do that day — not
+   because it is coached, and not because it needs a rack. A goblet squat needs
+   the same pattern and less skill and is still only secondary, because its
+   loading ceiling is low. Role decides which slot a movement may fill and what
+   order the block is written in; equipment and avoid tags decide whether it may
+   appear at all; plane and unilateral decide nothing on their own, but the draw
+   will not write a whole session in one plane if it can help it.
 
    d  is the movement's own prescription. For strength it is a rep range alone —
-   the builder puts the set count in front of it, because that scales with the time
-   you have. For mobility, core and finishers it is the whole prescription, because
-   nothing scales it. */
+   the builder puts the set count in front of it, because that scales with the
+   time you have. For mobility, core and finishers it is the whole prescription,
+   because nothing scales it. */
 
 const LIB = [
-  // mobility — shoulders & upper back
-  {n:'Band shoulder dislocations', p:'m_shoulder', e:1, a:[],            d:'2 × 10', t:'p', r:'acc'},
-  {n:'Wall slides',                p:'m_shoulder', e:0, a:[],            d:'2 × 10', t:'s', r:'acc'},
-  {n:'Prone Y/T/W raises',         p:'m_shoulder', e:0, a:['floor'],     d:'2 × 8 each', t:'s', r:'acc'},
-  {n:'Doorway pec stretch',        p:'m_shoulder', e:0, a:[],            d:'30 sec each side', t:'s', r:'acc'},
-  {n:'Thread the needle',          p:'m_shoulder', e:0, a:['floor'],     d:'8 each side', t:'s', r:'acc'},
-  {n:'Banded face pulls, light',   p:'m_shoulder', e:1, a:[],            d:'2 × 15', t:'s', r:'acc'},
-  {n:'Foam roller thoracic extensions', p:'m_shoulder', e:2, a:['floor'],d:'1–2 min', t:'s', r:'acc'},
-  // mobility — hips
-  {n:'90/90 hip rotations',        p:'m_hip', e:0, a:['floor'],          d:'8 each side', t:'s', r:'acc'},
-  {n:'Kneeling hip flexor stretch',p:'m_hip', e:0, a:['floor'],          d:'45 sec each side', t:'s', r:'acc'},
-  {n:"World's greatest stretch",   p:'m_hip', e:0, a:['floor'],          d:'5 each side', t:'s', r:'acc'},
-  {n:'Pigeon',                     p:'m_hip', e:0, a:['floor'],          d:'1 min each side', t:'s', r:'acc'},
-  {n:'Cossack stretch, unloaded, partial range', p:'m_hip', e:0, a:['floor','deepknee'], d:'8 each side', t:'s', r:'acc'},
-  {n:'Couch stretch',              p:'m_hip', e:0, a:['floor'],          d:'45 sec each side', t:'s', r:'acc'},
-  {n:'Banded hip openers',         p:'m_hip', e:1, a:['floor'],          d:'10 each direction', t:'s', r:'acc'},
-  {n:'Standing hip circles',       p:'m_hip', e:0, a:[],                 d:'10 each direction', t:'s', r:'acc'},
-  // mobility — spine
-  {n:'Cat-cow with thoracic rotation', p:'m_spine', e:0, a:['floor'],    d:'8 each direction', t:'s', r:'acc'},
-  {n:'Bird dog',                   p:'m_spine', e:0, a:['floor'],        d:'8 each side', t:'s', r:'acc'},
-  {n:'Dead bug',                   p:'m_spine', e:0, a:['floor'],        d:'8 each side', t:'s', r:'acc'},
-  {n:'Open book',                  p:'m_spine', e:0, a:['floor'],        d:'8 each side', t:'s', r:'acc'},
-  {n:'Supine spinal twist',        p:'m_spine', e:0, a:['floor'],        d:'30 sec each side', t:'s', r:'acc'},
-  {n:'Standing side bend',         p:'m_spine', e:0, a:[],               d:'8 each side', t:'s', r:'acc'},
-  // mobility — neck & traps
-  {n:'Upper trap release, hands or ball', p:'m_neck', e:0, a:[],         d:'30 sec each side', t:'s', r:'acc'},
-  {n:'Levator scapulae stretch',   p:'m_neck', e:0, a:[],                d:'30 sec each side', t:'s', r:'acc'},
-  {n:'Chin tucks',                 p:'m_neck', e:0, a:[],                d:'2 × 10', t:'s', r:'acc'},
-  {n:'Suboccipital release, towel under the skull', p:'m_neck', e:0, a:['floor'], d:'1 min', t:'s', r:'acc'},
 
-  // hinge
-  {n:'Trap-bar deadlift',    p:'hinge', e:3, a:['grip'], d:'3–5', t:'p', r:'main'},
-  {n:'Conventional deadlift',p:'hinge', e:3, a:['grip'], d:'3–5', t:'c', r:'main'},
-  {n:'Romanian deadlift',    p:'hinge', e:2, a:['grip'], d:'6–10', t:'p', r:'sec'},
-  {n:'Single-leg RDL',       p:'hinge', e:2, a:[],       d:'8–12 each side', t:'p', r:'acc'},
-  {n:'Hip thrust',           p:'hinge', e:3, a:[],       d:'8–12', t:'p', r:'sec'},
-  {n:'Kettlebell swing',     p:'hinge', e:2, a:['grip'], d:'10–15', t:'c', r:'sec'},
-  {n:'Good morning',         p:'hinge', e:3, a:[],       d:'8–12', t:'c', r:'sec'},
-  {n:'Glute bridge',         p:'hinge', e:0, a:['floor'],d:'12–15', t:'s', r:'acc'},
-  // squat
-  {n:'Back squat',           p:'squat', e:3, a:[],           d:'4–6', t:'c', r:'main'},
-  {n:'Front squat',          p:'squat', e:3, a:[],           d:'3–6', t:'c', r:'main'},
-  {n:'Goblet squat',         p:'squat', e:2, a:[],           d:'8–12', t:'s', r:'sec'},
-  {n:'Leg press',            p:'squat', e:3, a:[],           d:'8–12', t:'s', r:'sec'},
-  {n:'Bulgarian split squat',p:'squat', e:2, a:[],           d:'8–12 each side', t:'p', r:'sec'},
-  {n:'Walking lunge',        p:'squat', e:2, a:[],           d:'10–12 each side', t:'s', r:'acc'},
-  {n:'Step-up',              p:'squat', e:2, a:[],           d:'8–12 each side', t:'s', r:'acc'},
-  {n:'Bodyweight squat',     p:'squat', e:0, a:[],           d:'15–20', t:'s', r:'acc'},
-  {n:'Cossack squat',        p:'squat', e:0, a:['deepknee'], d:'6–8 each side', t:'p', r:'acc'},
-  {n:'Deep ATG squat',       p:'squat', e:3, a:['deepknee'], d:'5–8', t:'c', r:'sec'},
-  {n:'Box jump',             p:'squat', e:3, a:['jump'],     d:'3–5', t:'p', r:'sec'},
-  // push
-  {n:'Barbell bench press',   p:'push', e:3, a:[],                  d:'4–6', t:'p', r:'main'},
-  {n:'Dumbbell bench press',  p:'push', e:2, a:[],                  d:'8–12', t:'s', r:'sec'},
-  {n:'Incline dumbbell press',p:'push', e:2, a:[],                  d:'8–12', t:'s', r:'sec'},
-  {n:'Overhead press',        p:'push', e:3, a:['overhead'],        d:'5–8', t:'p', r:'main'},
-  {n:'Dumbbell shoulder press',p:'push',e:2, a:['overhead'],        d:'8–12', t:'s', r:'sec'},
-  {n:'Push-up',               p:'push', e:0, a:['floor'],           d:'10–20', t:'s', r:'acc'},
-  {n:'Loaded push-up',        p:'push', e:2, a:['floor'],           d:'8–12', t:'s', r:'sec'},
-  {n:'Dip',                   p:'push', e:3, a:[],                  d:'6–10', t:'p', r:'sec'},
-  {n:'Cable fly',             p:'push', e:3, a:[],                  d:'12–15', t:'s', r:'acc'},
-  {n:'Pike push-up',          p:'push', e:0, a:['floor','overhead'],d:'6–10', t:'p', r:'sec'},
-  // pull
-  {n:'Pull-up',           p:'pull', e:3, a:['grip'], d:'5–8', t:'p', r:'sec'},
-  {n:'Chin-up',           p:'pull', e:3, a:['grip'], d:'5–8', t:'p', r:'sec'},
-  {n:'Weighted pull-up',  p:'pull', e:3, a:['grip'], d:'3–6', t:'p', r:'main'},
-  {n:'Lat pulldown',      p:'pull', e:3, a:[],       d:'8–12', t:'s', r:'sec'},
-  {n:'Barbell row',       p:'pull', e:3, a:['grip'], d:'6–10', t:'p', r:'main'},
-  {n:'Dumbbell row',      p:'pull', e:2, a:[],       d:'8–12 each side', t:'s', r:'sec'},
-  {n:'Cable row',         p:'pull', e:3, a:[],       d:'8–12', t:'s', r:'sec'},
-  {n:'Inverted row',      p:'pull', e:3, a:[],       d:'10–15', t:'s', r:'acc'},
-  {n:'Face pull',         p:'pull', e:1, a:[],       d:'12–20', t:'s', r:'acc'},
-  {n:'Band pull-apart',   p:'pull', e:1, a:[],       d:'15–20', t:'s', r:'acc'},
-  // accessory
-  {n:'Lateral raise',     p:'acc', e:2, a:[], d:'12–15', t:'s', r:'acc'},
-  {n:'Biceps curl',       p:'acc', e:2, a:[], d:'10–15', t:'s', r:'acc'},
-  {n:'Triceps extension', p:'acc', e:2, a:[], d:'10–15', t:'s', r:'acc'},
-  {n:'Calf raise',        p:'acc', e:0, a:[], d:'12–20', t:'s', r:'acc'},
-  {n:'Rear delt fly',     p:'acc', e:2, a:[], d:'12–20', t:'s', r:'acc'},
-  // core
-  {n:'Plank',             p:'core', e:0, a:['floor'], d:'30–60 sec', t:'s', r:'acc'},
-  {n:'Side plank',        p:'core', e:0, a:['floor'], d:'30–45 sec each', t:'s', r:'acc'},
-  {n:'Hollow hold',       p:'core', e:0, a:['floor'], d:'20–40 sec', t:'p', r:'acc'},
-  {n:'Dead bug',          p:'core', e:0, a:['floor'], d:'8–12 each side', t:'s', r:'acc'},
-  {n:'Hanging leg raise', p:'core', e:3, a:['grip'],  d:'8–12', t:'p', r:'sec'},
-  {n:'Ab wheel rollout',  p:'core', e:3, a:['floor'], d:'6–10', t:'p', r:'sec'},
-  {n:'Pallof press',      p:'core', e:1, a:[],        d:'10–12 each side', t:'s', r:'acc'},
-  {n:'Russian twist',     p:'core', e:0, a:['floor'], d:'12–16 each side', t:'s', r:'acc'},
-  {n:'Suitcase carry',    p:'core', e:2, a:['grip'],  d:'30 m each side', t:'s', r:'sec'},
-  // finisher
-  {n:'Rower intervals',      p:'fin', e:3, a:['grip'],         d:'5 × 250 m, 1 min rest', t:'p', r:'sec'},
-  {n:'Assault bike sprints', p:'fin', e:3, a:[],               d:'6 × 20 sec hard, 40 sec easy', t:'s', r:'sec'},
-  {n:'Wall ball',            p:'fin', e:3, a:['overhead'],     d:'3 × 15', t:'p', r:'sec'},
-  {n:'Kettlebell swings',    p:'fin', e:2, a:['grip'],         d:'5 × 15, 30 sec rest', t:'c', r:'sec'},
-  {n:'Farmer’s carry',       p:'fin', e:2, a:['grip'],         d:'4 × 40 m', t:'s', r:'sec'},
-  {n:'Battle ropes',         p:'fin', e:3, a:['grip'],         d:'6 × 20 sec', t:'s', r:'acc'},
-  {n:'Burpees',              p:'fin', e:0, a:['jump','floor'], d:'5 × 8', t:'s', r:'sec'},
-  {n:'Mountain climbers',    p:'fin', e:0, a:['floor'],        d:'4 × 40 sec', t:'s', r:'acc'},
-  {n:'Jump rope',            p:'fin', e:0, a:['jump'],         d:'5 × 1 min', t:'s', r:'acc'},
+  /* ===== MOBILITY — shoulders & upper back ================================ */
+  {n:'Band shoulder dislocations', p:'m_shoulder', e:1, a:[],            d:'2 × 10', t:'p', r:'acc', dm:2, pl:'sag'},
+  {n:'Wall slides',                p:'m_shoulder', e:0, a:[],            d:'2 × 10', t:'s', r:'acc', dm:1, pl:'sag'},
+  {n:'Prone Y/T/W raises',         p:'m_shoulder', e:0, a:['floor'],     d:'2 × 8 each', t:'s', r:'acc', dm:2, pl:'sag'},
+  {n:'Doorway pec stretch',        p:'m_shoulder', e:0, a:[],            d:'30 sec each side', t:'s', r:'acc', dm:1, pl:'trans', u:1},
+  {n:'Thread the needle',          p:'m_shoulder', e:0, a:['floor'],     d:'8 each side', t:'s', r:'acc', dm:1, pl:'trans', u:1},
+  {n:'Banded face pulls, light',   p:'m_shoulder', e:1, a:[],            d:'2 × 15', t:'s', r:'acc', dm:1, pl:'sag'},
+  {n:'Foam roller thoracic extensions', p:'m_shoulder', e:2, a:['floor'],d:'1–2 min', t:'s', r:'acc', dm:1, pl:'sag'},
+  // new — demanding
+  {n:'Shoulder CARs, slow',        p:'m_shoulder', e:0, a:[],            d:'3 each side, 30 sec per rep', t:'p', r:'acc', dm:2, pl:'trans', u:1},
+  {n:'Passive hang',               p:'m_shoulder', e:3, a:['grip','overhead'], d:'3 × 30–45 sec', t:'s', r:'acc', dm:2, pl:'sag', sp:['calisthenics']},
+  {n:'Active hang, scapular pull', p:'m_shoulder', e:3, a:['grip','overhead'], d:'3 × 8', t:'p', r:'acc', dm:3, pl:'sag', sp:['calisthenics']},
+  {n:'Weighted dead hang',         p:'m_shoulder', e:3, a:['grip','overhead'], d:'3 × 20–30 sec', t:'p', r:'acc', dm:3, pl:'sag'},
+  {n:'Skin the cat, partial',      p:'m_shoulder', e:3, a:['grip','overhead'], d:'3 × 3', t:'c', r:'acc', dm:3, pl:'sag', sp:['calisthenics']},
+  {n:'Wall-supported handstand hold', p:'m_shoulder', e:0, a:['overhead','floor'], d:'3 × 30 sec', t:'c', r:'acc', dm:3, pl:'sag', sp:['calisthenics']},
+  {n:'Prone press-up to thoracic extension', p:'m_shoulder', e:0, a:['floor'], d:'2 × 10', t:'s', r:'acc', dm:2, pl:'sag'},
+  {n:'Bottoms-up kettlebell carry', p:'m_shoulder', e:2, a:['grip','overhead'], d:'4 × 20 m each side', t:'c', r:'acc', dm:3, pl:'front', u:1},
+  {n:'Half-kneeling landmine press, slow', p:'m_shoulder', e:3, a:['overhead'], d:'2 × 8 each side', t:'p', r:'acc', dm:2, pl:'trans', u:1},
+
+  /* ===== MOBILITY — hips ================================================== */
+  {n:'90/90 hip rotations',        p:'m_hip', e:0, a:['floor'],          d:'8 each side', t:'s', r:'acc', dm:1, pl:'trans', u:1},
+  {n:'Kneeling hip flexor stretch',p:'m_hip', e:0, a:['floor'],          d:'45 sec each side', t:'s', r:'acc', dm:1, pl:'sag', u:1},
+  {n:"World's greatest stretch",   p:'m_hip', e:0, a:['floor'],          d:'5 each side', t:'s', r:'acc', dm:2, pl:'trans', u:1},
+  {n:'Pigeon',                     p:'m_hip', e:0, a:['floor'],          d:'1 min each side', t:'s', r:'acc', dm:1, pl:'trans', u:1},
+  {n:'Cossack stretch, unloaded, partial range', p:'m_hip', e:0, a:['floor','deepknee'], d:'8 each side', t:'s', r:'acc', dm:2, pl:'front', u:1},
+  {n:'Couch stretch',              p:'m_hip', e:0, a:['floor'],          d:'45 sec each side', t:'s', r:'acc', dm:2, pl:'sag', u:1},
+  {n:'Banded hip openers',         p:'m_hip', e:1, a:['floor'],          d:'10 each direction', t:'s', r:'acc', dm:1, pl:'trans', u:1},
+  {n:'Standing hip circles',       p:'m_hip', e:0, a:[],                 d:'10 each direction', t:'s', r:'acc', dm:1, pl:'trans', u:1},
+  // new — demanding
+  {n:'Hip CARs, slow',             p:'m_hip', e:0, a:[],                 d:'3 each side, 30 sec per rep', t:'p', r:'acc', dm:2, pl:'trans', u:1},
+  {n:'90/90 lift-offs',            p:'m_hip', e:0, a:['floor'],          d:'3 × 5 each side, 3 sec hold', t:'p', r:'acc', dm:3, pl:'trans', u:1},
+  {n:'ATG split squat',            p:'m_hip', e:0, a:['deepknee'],       d:'3 × 8 each side', t:'p', r:'acc', dm:3, pl:'sag', u:1},
+  {n:'Loaded Cossack hold',        p:'m_hip', e:2, a:['deepknee'],       d:'3 × 20 sec each side', t:'p', r:'acc', dm:3, pl:'front', u:1, sp:['racket']},
+  {n:'Deep squat hold with pry',   p:'m_hip', e:0, a:['deepknee'],       d:'3 × 45 sec', t:'s', r:'acc', dm:2, pl:'sag'},
+  {n:'Seated pancake, active press', p:'m_hip', e:0, a:['floor'],        d:'3 × 8, 5 sec hold', t:'p', r:'acc', dm:3, pl:'front'},
+  {n:'Elevated pigeon, active press', p:'m_hip', e:3, a:[],              d:'3 × 8 each side', t:'p', r:'acc', dm:3, pl:'trans', u:1},
+  {n:'Jefferson curl, light',      p:'m_hip', e:2, a:[],                 d:'3 × 6, very slow', t:'c', r:'acc', dm:3, pl:'sag'},
+  {n:'Copenhagen plank, short lever', p:'m_hip', e:3, a:[],              d:'3 × 20 sec each side', t:'p', r:'acc', dm:3, pl:'front', u:1, sp:['racket']},
+  {n:'Reverse Nordic curl',        p:'m_hip', e:0, a:['floor','deepknee'], d:'3 × 6', t:'p', r:'acc', dm:3, pl:'sag'},
+  {n:'Tibialis wall raise',        p:'m_hip', e:0, a:[],                 d:'3 × 15', t:'s', r:'acc', dm:2, pl:'sag', sp:['racket']},
+
+  /* ===== MOBILITY — spine ================================================= */
+  {n:'Cat-cow with thoracic rotation', p:'m_spine', e:0, a:['floor'],    d:'8 each direction', t:'s', r:'acc', dm:1, pl:'trans'},
+  {n:'Bird dog',                   p:'m_spine', e:0, a:['floor'],        d:'8 each side', t:'s', r:'acc', dm:2, pl:'sag', u:1},
+  {n:'Dead bug',                   p:'m_spine', e:0, a:['floor'],        d:'8 each side', t:'s', r:'acc', dm:2, pl:'sag', u:1},
+  {n:'Open book',                  p:'m_spine', e:0, a:['floor'],        d:'8 each side', t:'s', r:'acc', dm:1, pl:'trans', u:1},
+  {n:'Supine spinal twist',        p:'m_spine', e:0, a:['floor'],        d:'30 sec each side', t:'s', r:'acc', dm:1, pl:'trans', u:1},
+  {n:'Standing side bend',         p:'m_spine', e:0, a:[],               d:'8 each side', t:'s', r:'acc', dm:1, pl:'front', u:1},
+  // new — demanding
+  {n:'Jefferson curl, loaded',     p:'m_spine', e:2, a:[],               d:'3 × 6, 5 sec down', t:'c', r:'acc', dm:3, pl:'sag'},
+  {n:'Segmented cat-cow, slow',    p:'m_spine', e:0, a:['floor'],        d:'3 × 8, 10 sec per rep', t:'p', r:'acc', dm:2, pl:'sag'},
+  {n:'Half-kneeling cable chop',   p:'m_spine', e:3, a:[],               d:'3 × 10 each side', t:'p', r:'acc', dm:3, pl:'trans', u:1, sp:['racket']},
+  {n:'Side plank with reach-through', p:'m_spine', e:0, a:['floor'],     d:'3 × 8 each side', t:'p', r:'acc', dm:3, pl:'trans', u:1},
+  {n:'Loaded side bend',           p:'m_spine', e:2, a:['grip'],         d:'3 × 10 each side', t:'s', r:'acc', dm:2, pl:'front', u:1},
+  {n:'Hanging knee raise with rotation', p:'m_spine', e:3, a:['grip','overhead'], d:'3 × 8 each side', t:'p', r:'acc', dm:3, pl:'trans', u:1},
+
+  /* ===== MOBILITY — neck & traps ========================================== */
+  {n:'Upper trap release, hands or ball', p:'m_neck', e:0, a:[],         d:'30 sec each side', t:'s', r:'acc', dm:1, pl:'front', u:1},
+  {n:'Levator scapulae stretch',   p:'m_neck', e:0, a:[],                d:'30 sec each side', t:'s', r:'acc', dm:1, pl:'trans', u:1},
+  {n:'Chin tucks',                 p:'m_neck', e:0, a:[],                d:'2 × 10', t:'s', r:'acc', dm:1, pl:'sag'},
+  {n:'Suboccipital release, towel under the skull', p:'m_neck', e:0, a:['floor'], d:'1 min', t:'s', r:'acc', dm:1, pl:'sag'},
+  // new — demanding
+  {n:'Isometric neck holds, four directions', p:'m_neck', e:0, a:[],     d:'4 × 20 sec each', t:'p', r:'acc', dm:2, pl:'sag'},
+  {n:'Neck CARs, slow',            p:'m_neck', e:0, a:[],                d:'3 each direction, 20 sec per rep', t:'p', r:'acc', dm:2, pl:'trans'},
+  {n:'Prone trap raise, light load', p:'m_neck', e:2, a:['floor'],       d:'3 × 12', t:'p', r:'acc', dm:2, pl:'sag'},
+  {n:'Banded scapular retraction hold', p:'m_neck', e:1, a:[],           d:'3 × 20 sec', t:'s', r:'acc', dm:2, pl:'sag'},
+
+  /* ===== HINGE ============================================================ */
+  {n:'Trap-bar deadlift',    p:'hinge', e:3, a:['grip'], d:'3–5', t:'p', r:'main', dm:3, pl:'sag'},
+  {n:'Conventional deadlift',p:'hinge', e:3, a:['grip'], d:'3–5', t:'c', r:'main', dm:3, pl:'sag'},
+  {n:'Romanian deadlift',    p:'hinge', e:2, a:['grip'], d:'6–10', t:'p', r:'sec', dm:3, pl:'sag'},
+  {n:'Single-leg RDL',       p:'hinge', e:2, a:[],       d:'8–12 each side', t:'p', r:'acc', dm:2, pl:'sag', u:1},
+  {n:'Hip thrust',           p:'hinge', e:3, a:[],       d:'8–12', t:'p', r:'sec', dm:2, pl:'sag'},
+  {n:'Kettlebell swing',     p:'hinge', e:2, a:['grip'], d:'10–15', t:'c', r:'sec', dm:3, pl:'sag'},
+  {n:'Good morning',         p:'hinge', e:3, a:[],       d:'8–12', t:'c', r:'sec', dm:2, pl:'sag'},
+  {n:'Glute bridge',         p:'hinge', e:0, a:['floor'],d:'12–15', t:'s', r:'acc', dm:1, pl:'sag'},
+  // new — bands
+  {n:'Band good morning',    p:'hinge', e:1, a:[],       d:'3 × 15', t:'s', r:'acc', dm:2, pl:'sag'},
+  {n:'Band pull-through',    p:'hinge', e:1, a:[],       d:'3 × 15', t:'s', r:'acc', dm:2, pl:'sag'},
+  {n:'Banded hip thrust',    p:'hinge', e:1, a:['floor'],d:'3 × 15', t:'s', r:'sec', dm:2, pl:'sag'},
+  {n:'Banded RDL',           p:'hinge', e:1, a:[],       d:'3 × 12', t:'s', r:'sec', dm:2, pl:'sag'},
+  // new — bodyweight, including an anchor
+  {n:'Nordic hamstring curl',p:'hinge', e:0, a:['floor','deepknee'], d:'4 × 5, 5 sec down', t:'c', r:'main', dm:3, pl:'sag'},
+  {n:'Single-leg glute bridge', p:'hinge', e:0, a:['floor'], d:'3 × 12 each side', t:'s', r:'acc', dm:2, pl:'sag', u:1},
+  {n:'Slider hamstring curl',p:'hinge', e:0, a:['floor'], d:'3 × 10', t:'p', r:'sec', dm:3, pl:'sag'},
+  {n:'Hip hinge to wall',    p:'hinge', e:0, a:[],       d:'3 × 12', t:'s', r:'acc', dm:1, pl:'sag'},
+  // new — gym
+  {n:'Sumo deadlift',        p:'hinge', e:3, a:['grip'], d:'3–5', t:'c', r:'main', dm:3, pl:'sag'},
+  {n:'Deficit deadlift',     p:'hinge', e:3, a:['grip'], d:'4–6', t:'c', r:'sec', dm:3, pl:'sag'},
+  {n:'Single-leg hip thrust',p:'hinge', e:3, a:[],       d:'3 × 10 each side', t:'p', r:'sec', dm:3, pl:'sag', u:1},
+  {n:'Back extension',       p:'hinge', e:3, a:[],       d:'3 × 12–15', t:'s', r:'acc', dm:2, pl:'sag'},
+  {n:'Reverse hyperextension', p:'hinge', e:3, a:[],     d:'3 × 12', t:'s', r:'acc', dm:2, pl:'sag'},
+  {n:'Kettlebell single-arm swing', p:'hinge', e:2, a:['grip'], d:'5 × 10 each side', t:'c', r:'sec', dm:3, pl:'trans', u:1},
+  {n:'Landmine RDL',         p:'hinge', e:3, a:['grip'], d:'3 × 10', t:'p', r:'sec', dm:2, pl:'sag'},
+  {n:'Cable pull-through',   p:'hinge', e:3, a:[],       d:'3 × 15', t:'s', r:'acc', dm:2, pl:'sag'},
+
+  /* ===== SQUAT ============================================================ */
+  {n:'Back squat',           p:'squat', e:3, a:[],           d:'4–6', t:'c', r:'main', dm:3, pl:'sag'},
+  {n:'Front squat',          p:'squat', e:3, a:[],           d:'3–6', t:'c', r:'main', dm:3, pl:'sag'},
+  {n:'Goblet squat',         p:'squat', e:2, a:[],           d:'8–12', t:'s', r:'sec', dm:2, pl:'sag'},
+  {n:'Leg press',            p:'squat', e:3, a:[],           d:'8–12', t:'s', r:'sec', dm:2, pl:'sag'},
+  {n:'Bulgarian split squat',p:'squat', e:2, a:[],           d:'8–12 each side', t:'p', r:'sec', dm:3, pl:'sag', u:1},
+  {n:'Walking lunge',        p:'squat', e:2, a:[],           d:'10–12 each side', t:'s', r:'acc', dm:2, pl:'sag', u:1},
+  {n:'Step-up',              p:'squat', e:2, a:[],           d:'8–12 each side', t:'s', r:'acc', dm:2, pl:'sag', u:1},
+  {n:'Bodyweight squat',     p:'squat', e:0, a:[],           d:'15–20', t:'s', r:'acc', dm:1, pl:'sag'},
+  {n:'Cossack squat',        p:'squat', e:0, a:['deepknee'], d:'6–8 each side', t:'p', r:'acc', dm:3, pl:'front', u:1, sp:['racket']},
+  {n:'Deep ATG squat',       p:'squat', e:3, a:['deepknee'], d:'5–8', t:'c', r:'sec', dm:3, pl:'sag'},
+  // new — bands
+  {n:'Banded squat',         p:'squat', e:1, a:[],           d:'3 × 15', t:'s', r:'sec', dm:2, pl:'sag'},
+  {n:'Banded lateral walk',  p:'squat', e:1, a:[],           d:'3 × 15 each way', t:'s', r:'acc', dm:2, pl:'front', sp:['racket']},
+  {n:'Monster walk',         p:'squat', e:1, a:[],           d:'3 × 20 steps', t:'s', r:'acc', dm:2, pl:'front', sp:['racket']},
+  {n:'Band-resisted split squat', p:'squat', e:1, a:[],      d:'3 × 12 each side', t:'s', r:'sec', dm:2, pl:'sag', u:1},
+  // new — bodyweight, including an anchor
+  {n:'Pistol squat',         p:'squat', e:0, a:['deepknee'], d:'4 × 5 each side', t:'c', r:'main', dm:3, pl:'sag', u:1, sp:['calisthenics']},
+  {n:'Shrimp squat',         p:'squat', e:0, a:['deepknee'], d:'3 × 6 each side', t:'c', r:'sec', dm:3, pl:'sag', u:1, sp:['calisthenics']},
+  {n:'Sissy squat',          p:'squat', e:0, a:['deepknee'], d:'3 × 10', t:'p', r:'acc', dm:3, pl:'sag'},
+  {n:'Wall sit',             p:'squat', e:0, a:[],           d:'3 × 45–60 sec', t:'s', r:'acc', dm:2, pl:'sag', sp:['bike']},
+  {n:'Split squat, bodyweight', p:'squat', e:0, a:[],        d:'3 × 12 each side', t:'s', r:'acc', dm:2, pl:'sag', u:1},
+  // new — gym and dumbbell
+  {n:'Hack squat',           p:'squat', e:3, a:[],           d:'8–12', t:'s', r:'sec', dm:3, pl:'sag'},
+  {n:'Double kettlebell front squat', p:'squat', e:2, a:['grip'], d:'5–8', t:'p', r:'main', dm:3, pl:'sag'},
+  {n:'Zercher squat',        p:'squat', e:3, a:[],           d:'5–8', t:'c', r:'sec', dm:3, pl:'sag'},
+  {n:'Lateral lunge',        p:'squat', e:2, a:[],           d:'3 × 10 each side', t:'p', r:'sec', dm:3, pl:'front', u:1, sp:['racket']},
+  {n:'Curtsy lunge',         p:'squat', e:2, a:[],           d:'3 × 10 each side', t:'p', r:'acc', dm:2, pl:'trans', u:1},
+  {n:'Reverse lunge',        p:'squat', e:2, a:[],           d:'3 × 10 each side', t:'s', r:'sec', dm:2, pl:'sag', u:1},
+  {n:'Lateral step-down',    p:'squat', e:3, a:['deepknee'], d:'3 × 10 each side', t:'p', r:'acc', dm:3, pl:'front', u:1},
+  {n:'Belt squat',           p:'squat', e:3, a:[],           d:'8–12', t:'s', r:'sec', dm:2, pl:'sag'},
+  {n:'Sled push',            p:'squat', e:3, a:[],           d:'6 × 20 m', t:'s', r:'sec', dm:3, pl:'sag', sp:['bike']},
+
+  /* ===== PUSH ============================================================= */
+  {n:'Barbell bench press',   p:'push', e:3, a:[],                  d:'4–6', t:'p', r:'main', dm:3, pl:'sag'},
+  {n:'Dumbbell bench press',  p:'push', e:2, a:[],                  d:'8–12', t:'s', r:'sec', dm:2, pl:'sag'},
+  {n:'Incline dumbbell press',p:'push', e:2, a:[],                  d:'8–12', t:'s', r:'sec', dm:2, pl:'sag'},
+  {n:'Overhead press',        p:'push', e:3, a:['overhead'],        d:'5–8', t:'p', r:'main', dm:3, pl:'sag'},
+  {n:'Dumbbell shoulder press',p:'push',e:2, a:['overhead'],        d:'8–12', t:'s', r:'sec', dm:2, pl:'sag'},
+  {n:'Push-up',               p:'push', e:0, a:['floor'],           d:'10–20', t:'s', r:'acc', dm:2, pl:'sag'},
+  {n:'Loaded push-up',        p:'push', e:2, a:['floor'],           d:'8–12', t:'s', r:'sec', dm:3, pl:'sag'},
+  {n:'Dip',                   p:'push', e:3, a:[],                  d:'6–10', t:'p', r:'sec', dm:3, pl:'sag'},
+  {n:'Cable fly',             p:'push', e:3, a:[],                  d:'12–15', t:'s', r:'acc', dm:2, pl:'trans'},
+  {n:'Pike push-up',          p:'push', e:0, a:['floor','overhead'],d:'6–10', t:'p', r:'sec', dm:3, pl:'sag', sp:['calisthenics']},
+  // new — bands
+  {n:'Band chest press',      p:'push', e:1, a:[],                  d:'3 × 15', t:'s', r:'sec', dm:2, pl:'sag'},
+  {n:'Band overhead press',   p:'push', e:1, a:['overhead'],        d:'3 × 15', t:'s', r:'sec', dm:2, pl:'sag'},
+  {n:'Band-resisted push-up', p:'push', e:1, a:['floor'],           d:'3 × 12', t:'s', r:'sec', dm:3, pl:'sag'},
+  {n:'Single-arm band press', p:'push', e:1, a:[],                  d:'3 × 12 each side', t:'p', r:'acc', dm:2, pl:'trans', u:1},
+  // new — bodyweight
+  {n:'Archer push-up',        p:'push', e:0, a:['floor'],           d:'3 × 6 each side', t:'c', r:'sec', dm:3, pl:'front', u:1, sp:['calisthenics']},
+  {n:'Diamond push-up',       p:'push', e:0, a:['floor'],           d:'3 × 10', t:'s', r:'acc', dm:3, pl:'sag'},
+  {n:'Decline push-up',       p:'push', e:0, a:['floor'],           d:'3 × 12', t:'s', r:'sec', dm:3, pl:'sag'},
+  {n:'Pseudo-planche push-up',p:'push', e:0, a:['floor'],           d:'3 × 6', t:'c', r:'sec', dm:3, pl:'sag', sp:['calisthenics']},
+  // new — gym and dumbbell, including an anchor
+  {n:'Weighted dip',          p:'push', e:3, a:[],                  d:'4–6', t:'p', r:'main', dm:3, pl:'sag'},
+  {n:'Single-arm dumbbell bench press', p:'push', e:2, a:[],        d:'6–8 each side', t:'p', r:'main', dm:3, pl:'trans', u:1},
+  {n:'Close-grip bench press',p:'push', e:3, a:[],                  d:'6–8', t:'p', r:'sec', dm:3, pl:'sag'},
+  {n:'Incline barbell press', p:'push', e:3, a:[],                  d:'5–8', t:'p', r:'sec', dm:3, pl:'sag'},
+  {n:'Landmine press',        p:'push', e:3, a:[],                  d:'3 × 10 each side', t:'p', r:'sec', dm:2, pl:'trans', u:1, sp:['racket']},
+  {n:'Half-kneeling overhead press', p:'push', e:2, a:['overhead'], d:'3 × 8 each side', t:'p', r:'sec', dm:2, pl:'sag', u:1},
+  {n:'Push press',            p:'push', e:3, a:['overhead'],        d:'3 × 5', t:'c', r:'sec', dm:3, pl:'sag'},
+  {n:'Machine chest press',   p:'push', e:3, a:[],                  d:'10–12', t:'s', r:'acc', dm:2, pl:'sag'},
+  {n:'Cable crossover, low to high', p:'push', e:3, a:[],           d:'3 × 15', t:'s', r:'acc', dm:2, pl:'trans'},
+
+  /* ===== PULL ============================================================= */
+  {n:'Pull-up',           p:'pull', e:3, a:['grip'], d:'5–8', t:'p', r:'sec', dm:3, pl:'sag', sp:['calisthenics']},
+  {n:'Chin-up',           p:'pull', e:3, a:['grip'], d:'5–8', t:'p', r:'sec', dm:3, pl:'sag', sp:['calisthenics']},
+  {n:'Weighted pull-up',  p:'pull', e:3, a:['grip'], d:'3–6', t:'p', r:'main', dm:3, pl:'sag'},
+  {n:'Lat pulldown',      p:'pull', e:3, a:[],       d:'8–12', t:'s', r:'sec', dm:2, pl:'sag'},
+  {n:'Barbell row',       p:'pull', e:3, a:['grip'], d:'6–10', t:'p', r:'main', dm:3, pl:'sag'},
+  {n:'Dumbbell row',      p:'pull', e:2, a:[],       d:'8–12 each side', t:'s', r:'sec', dm:2, pl:'sag', u:1},
+  {n:'Cable row',         p:'pull', e:3, a:[],       d:'8–12', t:'s', r:'sec', dm:2, pl:'sag'},
+  {n:'Inverted row',      p:'pull', e:3, a:[],       d:'10–15', t:'s', r:'acc', dm:2, pl:'sag'},
+  {n:'Face pull',         p:'pull', e:1, a:[],       d:'12–20', t:'s', r:'acc', dm:1, pl:'sag'},
+  {n:'Band pull-apart',   p:'pull', e:1, a:[],       d:'15–20', t:'s', r:'acc', dm:1, pl:'front'},
+  // new — bands
+  {n:'Band row, seated',  p:'pull', e:1, a:[],       d:'3 × 15', t:'s', r:'sec', dm:2, pl:'sag'},
+  {n:'Band lat pulldown', p:'pull', e:1, a:['overhead'], d:'3 × 15', t:'s', r:'sec', dm:2, pl:'sag'},
+  {n:'Band straight-arm pulldown', p:'pull', e:1, a:[], d:'3 × 15', t:'s', r:'acc', dm:2, pl:'sag'},
+  {n:'Single-arm band row', p:'pull', e:1, a:[],     d:'3 × 12 each side', t:'s', r:'acc', dm:2, pl:'trans', u:1},
+  // new — bodyweight
+  {n:'Towel row, under a table', p:'pull', e:0, a:['floor','grip'], d:'3 × 12', t:'s', r:'sec', dm:2, pl:'sag'},
+  {n:'Doorway isometric row', p:'pull', e:0, a:['grip'], d:'3 × 20 sec each side', t:'s', r:'acc', dm:2, pl:'sag', u:1},
+  {n:'Prone swimmers',    p:'pull', e:0, a:['floor'], d:'3 × 30 sec', t:'s', r:'acc', dm:2, pl:'sag'},
+  {n:'Superman hold',     p:'pull', e:0, a:['floor'], d:'3 × 30 sec', t:'s', r:'acc', dm:2, pl:'sag'},
+  // new — gym and dumbbell
+  {n:'Archer pull-up',    p:'pull', e:3, a:['grip'],  d:'3 × 4 each side', t:'c', r:'sec', dm:3, pl:'front', u:1, sp:['calisthenics']},
+  {n:'Chest-supported row', p:'pull', e:3, a:[],      d:'8–12', t:'s', r:'sec', dm:2, pl:'sag'},
+  {n:'Pendlay row',       p:'pull', e:3, a:['grip'],  d:'5–8', t:'c', r:'sec', dm:3, pl:'sag'},
+  {n:'Meadows row',       p:'pull', e:3, a:['grip'],  d:'3 × 10 each side', t:'p', r:'sec', dm:3, pl:'trans', u:1},
+  {n:'Single-arm cable row, rotating', p:'pull', e:3, a:[], d:'3 × 12 each side', t:'p', r:'sec', dm:2, pl:'trans', u:1, sp:['racket']},
+  {n:'Straight-arm pulldown', p:'pull', e:3, a:[],    d:'3 × 15', t:'s', r:'acc', dm:2, pl:'sag'},
+  {n:'Scapular pull-up',  p:'pull', e:3, a:['grip','overhead'], d:'3 × 8', t:'p', r:'acc', dm:2, pl:'sag', sp:['calisthenics']},
+  {n:'Shrug',             p:'pull', e:2, a:['grip'],  d:'3 × 12', t:'s', r:'acc', dm:2, pl:'sag'},
+
+  /* ===== ACCESSORY ======================================================== */
+  {n:'Lateral raise',     p:'acc', e:2, a:[], d:'12–15', t:'s', r:'acc', dm:2, pl:'front'},
+  {n:'Biceps curl',       p:'acc', e:2, a:[], d:'10–15', t:'s', r:'acc', dm:2, pl:'sag'},
+  {n:'Triceps extension', p:'acc', e:2, a:[], d:'10–15', t:'s', r:'acc', dm:2, pl:'sag'},
+  {n:'Calf raise',        p:'acc', e:0, a:[], d:'12–20', t:'s', r:'acc', dm:2, pl:'sag'},
+  {n:'Rear delt fly',     p:'acc', e:2, a:[], d:'12–20', t:'s', r:'acc', dm:2, pl:'trans'},
+  // new — bands
+  {n:'Band biceps curl',  p:'acc', e:1, a:[], d:'3 × 15', t:'s', r:'acc', dm:2, pl:'sag'},
+  {n:'Band triceps pressdown', p:'acc', e:1, a:[], d:'3 × 15', t:'s', r:'acc', dm:2, pl:'sag'},
+  {n:'Band lateral raise',p:'acc', e:1, a:[], d:'3 × 15', t:'s', r:'acc', dm:2, pl:'front'},
+  {n:'Band external rotation', p:'acc', e:1, a:[], d:'3 × 15 each side', t:'s', r:'acc', dm:1, pl:'trans', u:1, sp:['racket']},
+  {n:'Band wrist extension', p:'acc', e:1, a:['grip'], d:'3 × 20 each side', t:'s', r:'acc', dm:1, pl:'sag', u:1, sp:['racket']},
+  {n:'Band face-away curl', p:'acc', e:1, a:[], d:'3 × 15', t:'s', r:'acc', dm:2, pl:'sag'},
+  // new — bodyweight
+  {n:'Single-leg calf raise', p:'acc', e:0, a:[], d:'3 × 15 each side', t:'s', r:'acc', dm:2, pl:'sag', u:1},
+  {n:'Tibialis raise',    p:'acc', e:0, a:[], d:'3 × 20', t:'s', r:'acc', dm:2, pl:'sag', sp:['racket']},
+  {n:'Wrist push-up, kneeling', p:'acc', e:0, a:['floor','grip'], d:'3 × 12', t:'p', r:'acc', dm:2, pl:'sag', sp:['racket']},
+  // new — dumbbell and gym
+  {n:'Hammer curl',       p:'acc', e:2, a:[], d:'10–15', t:'s', r:'acc', dm:2, pl:'sag'},
+  {n:'Reverse curl',      p:'acc', e:2, a:['grip'], d:'12–15', t:'s', r:'acc', dm:2, pl:'sag', sp:['racket']},
+  {n:'Overhead triceps extension', p:'acc', e:2, a:['overhead'], d:'10–15', t:'s', r:'acc', dm:2, pl:'sag'},
+  {n:'Cable lateral raise', p:'acc', e:3, a:[], d:'3 × 15 each side', t:'s', r:'acc', dm:2, pl:'front', u:1},
+  {n:'External rotation, cable', p:'acc', e:3, a:[], d:'3 × 15 each side', t:'s', r:'acc', dm:2, pl:'trans', u:1, sp:['racket']},
+  {n:'Wrist roller',      p:'acc', e:3, a:['grip'], d:'3 × 2 up and down', t:'s', r:'acc', dm:3, pl:'sag', sp:['racket','calisthenics']},
+  {n:'Forearm pronation / supination', p:'acc', e:2, a:['grip'], d:'3 × 15 each side', t:'s', r:'acc', dm:2, pl:'trans', u:1, sp:['racket']},
+  {n:'Copenhagen plank',  p:'acc', e:3, a:[], d:'3 × 25 sec each side', t:'p', r:'sec', dm:3, pl:'front', u:1, sp:['racket']},
+  {n:'Nordic curl, assisted', p:'acc', e:0, a:['floor','deepknee'], d:'3 × 6', t:'p', r:'sec', dm:3, pl:'sag'},
+  {n:'Seated calf raise', p:'acc', e:3, a:[], d:'3 × 15', t:'s', r:'acc', dm:2, pl:'sag'},
+
+  /* ===== CORE ============================================================= */
+  {n:'Plank',             p:'core', e:0, a:['floor'], d:'30–60 sec', t:'s', r:'acc', dm:2, pl:'sag'},
+  {n:'Side plank',        p:'core', e:0, a:['floor'], d:'30–45 sec each', t:'s', r:'acc', dm:2, pl:'front', u:1},
+  {n:'Hollow hold',       p:'core', e:0, a:['floor'], d:'20–40 sec', t:'p', r:'acc', dm:3, pl:'sag', sp:['calisthenics']},
+  {n:'Dead bug',          p:'core', e:0, a:['floor'], d:'8–12 each side', t:'s', r:'acc', dm:2, pl:'sag', u:1},
+  {n:'Hanging leg raise', p:'core', e:3, a:['grip'],  d:'8–12 reps', t:'p', r:'sec', dm:3, pl:'sag', sp:['calisthenics']},
+  {n:'Ab wheel rollout',  p:'core', e:3, a:['floor'], d:'6–10 reps', t:'p', r:'sec', dm:3, pl:'sag'},
+  {n:'Pallof press',      p:'core', e:1, a:[],        d:'10–12 each side', t:'s', r:'acc', dm:2, pl:'trans', u:1, sp:['racket']},
+  {n:'Russian twist',     p:'core', e:0, a:['floor'], d:'12–16 each side', t:'s', r:'acc', dm:2, pl:'trans', u:1},
+  {n:'Suitcase carry',    p:'core', e:2, a:['grip'],  d:'30 m each side', t:'s', r:'sec', dm:3, pl:'front', u:1},
+  // new
+  {n:'Cable woodchop, high to low', p:'core', e:3, a:[], d:'3 × 12 each side', t:'p', r:'sec', dm:3, pl:'trans', u:1, sp:['racket']},
+  {n:'Cable woodchop, low to high', p:'core', e:3, a:[], d:'3 × 12 each side', t:'p', r:'sec', dm:3, pl:'trans', u:1, sp:['racket']},
+  {n:'Landmine rotation', p:'core', e:3, a:[],        d:'3 × 10 each side', t:'p', r:'sec', dm:3, pl:'trans', u:1, sp:['racket']},
+  {n:'Medicine ball rotational throw', p:'core', e:3, a:[], d:'4 × 6 each side', t:'p', r:'sec', dm:3, pl:'trans', u:1, sp:['racket']},
+  {n:'Half-kneeling Pallof hold', p:'core', e:3, a:[], d:'3 × 25 sec each side', t:'p', r:'acc', dm:3, pl:'trans', u:1, sp:['racket']},
+  {n:'L-sit progression', p:'core', e:3, a:[],        d:'4 × 15–25 sec', t:'c', r:'sec', dm:3, pl:'sag', sp:['calisthenics']},
+  {n:'Hollow rock',       p:'core', e:0, a:['floor'], d:'3 × 20', t:'p', r:'acc', dm:3, pl:'sag', sp:['calisthenics']},
+  {n:'Bear crawl',        p:'core', e:0, a:['floor'], d:'4 × 20 m', t:'s', r:'acc', dm:3, pl:'trans'},
+  {n:'Side plank with hip dip', p:'core', e:0, a:['floor'], d:'3 × 12 each side', t:'p', r:'acc', dm:3, pl:'front', u:1},
+  {n:'Overhead carry',    p:'core', e:2, a:['grip','overhead'], d:'4 × 30 m each side', t:'p', r:'sec', dm:3, pl:'front', u:1},
+  {n:'Weighted plank',    p:'core', e:2, a:['floor'], d:'3 × 40 sec', t:'s', r:'sec', dm:3, pl:'sag'},
+  {n:'Reverse crunch',    p:'core', e:0, a:['floor'], d:'3 × 15', t:'s', r:'acc', dm:2, pl:'sag'},
+  {n:'Banded anti-rotation hold', p:'core', e:1, a:[], d:'3 × 20 sec each side', t:'s', r:'acc', dm:2, pl:'trans', u:1, sp:['racket']},
+
+  /* ===== FINISHER ========================================================= */
+  {n:'Rower intervals',      p:'fin', e:3, a:['grip'],         d:'5 × 250 m, 1 min rest', t:'p', r:'sec', dm:3, pl:'sag'},
+  {n:'Assault bike sprints', p:'fin', e:3, a:[],               d:'6 × 20 sec hard, 40 sec easy', t:'s', r:'sec', dm:3, pl:'sag', sp:['bike']},
+  {n:'Wall ball',            p:'fin', e:3, a:['overhead'],     d:'3 × 15', t:'p', r:'sec', dm:3, pl:'sag'},
+  {n:'Kettlebell swings',    p:'fin', e:2, a:['grip'],         d:'5 × 15, 30 sec rest', t:'c', r:'sec', dm:3, pl:'sag'},
+  {n:'Farmer’s carry',       p:'fin', e:2, a:['grip'],         d:'4 × 40 m', t:'s', r:'sec', dm:3, pl:'front'},
+  {n:'Battle ropes',         p:'fin', e:3, a:['grip'],         d:'6 × 20 sec', t:'s', r:'acc', dm:3, pl:'sag'},
+  {n:'Burpees',              p:'fin', e:0, a:['jump','floor'], d:'5 × 8', t:'s', r:'sec', dm:3, pl:'sag'},
+  {n:'Mountain climbers',    p:'fin', e:0, a:['floor'],        d:'4 × 40 sec', t:'s', r:'acc', dm:2, pl:'trans'},
+  {n:'Jump rope',            p:'fin', e:0, a:['jump'],         d:'5 × 1 min', t:'s', r:'acc', dm:2, pl:'sag', sp:['racket']},
+  // new — Box jump moved here from squat, per the earlier decision
+  {n:'Box jump',             p:'fin', e:3, a:['jump'],         d:'5 × 3, 90 sec rest', t:'p', r:'sec', dm:3, pl:'sag'},
+  {n:'Lateral bound',        p:'fin', e:0, a:['jump'],         d:'4 × 6 each side', t:'p', r:'sec', dm:3, pl:'front', u:1, sp:['racket']},
+  {n:'Medicine ball slam',   p:'fin', e:3, a:['overhead'],     d:'4 × 10', t:'s', r:'sec', dm:3, pl:'sag'},
+  {n:'Sled drag, backwards', p:'fin', e:3, a:[],               d:'5 × 25 m', t:'s', r:'sec', dm:3, pl:'sag'},
+  {n:'Ski erg intervals',    p:'fin', e:3, a:['grip'],         d:'6 × 30 sec hard, 30 sec easy', t:'s', r:'sec', dm:3, pl:'sag'},
+  {n:'Shuttle runs',         p:'fin', e:0, a:['jump'],         d:'6 × 20 m there and back', t:'s', r:'sec', dm:3, pl:'trans', sp:['racket']},
+  {n:'Kettlebell clean and press', p:'fin', e:2, a:['grip','overhead'], d:'5 × 5 each side', t:'c', r:'sec', dm:3, pl:'sag', u:1},
+  {n:'Bear crawl shuttle',   p:'fin', e:0, a:['floor'],        d:'5 × 15 m', t:'s', r:'sec', dm:3, pl:'trans'},
+  {n:'Dumbbell thruster',    p:'fin', e:2, a:['overhead'],     d:'4 × 10', t:'p', r:'sec', dm:3, pl:'sag'},
+  {n:'Jumping lunge',        p:'fin', e:0, a:['jump'],         d:'4 × 10 each side', t:'p', r:'acc', dm:3, pl:'sag', u:1},
+  {n:'Rowing, steady',       p:'fin', e:3, a:['grip'],         d:'8 min at a conversational pace', t:'s', r:'acc', dm:2, pl:'sag'},
+
+  /* ===== HEAVY SLOW RESISTANCE ============================================
+     The loading scheme is the movement here: heavy, full range, roughly three
+     seconds up and three seconds down. The tempo is the prescription, which is
+     why these carry their own set counts rather than a rep range. */
+  {n:'Heavy slow leg press',   p:'squat', e:3, a:[],           d:'4 × 6, 3 sec up and 3 sec down', t:'s', r:'sec', dm:3, pl:'sag'},
+  {n:'Heavy slow calf raise',  p:'acc',   e:3, a:[],           d:'4 × 8, 3 sec up and 3 sec down', t:'s', r:'acc', dm:3, pl:'sag'},
+  {n:'Heavy slow split squat', p:'squat', e:2, a:['deepknee'], d:'4 × 6 each side, 3 sec down', t:'p', r:'sec', dm:3, pl:'sag', u:1},
 ];
+
+/* ============================================================== provenance ==
+
+   A movement carries a source only when there is a named, published protocol
+   behind it and a link anyone can open and check. Five protocols qualified.
+   Everything else in the library is unsourced, which is the honest state for a
+   back squat — nobody published it, it just exists.
+
+   What this is not: attribution to a person. A search for documented athlete
+   routines returned only aggregators with no primary source behind any of them.
+   Repeating that on a site built around an honesty audit would be the first
+   dishonest thing on it. See the rule in CLAUDE.md.
+
+   url is primary or near-primary: the body that publishes the protocol, or the
+   trial. evidence is strong | moderate | contested | untested, and contested is
+   a real value that gets used. note says what was measured, in whom, and how
+   many — never "proven". */
+
+const SOURCES = {
+
+  fifa11: {
+    name:     'FIFA 11+',
+    sport:    'football — also trialled in basketball',
+    what:     'A 20-minute warm-up published by FIFA’s medical research centre. Three parts: running, then strength / plyometrics / balance, then running with changes of direction.',
+    evidence: 'strong',
+    note:     'A 2017 systematic review and meta-analysis of the FIFA 11 and 11+ programmes found a reduction in overall injury rate in football. A separate cluster-randomised trial in elite male basketball players found the same programme reduced injuries in a sport it was not designed for.',
+    url:      'https://pubmed.ncbi.nlm.nih.gov/28087568/',
+    extra:    'https://pubmed.ncbi.nlm.nih.gov/22415208/',
+    manual:   'https://www.f-marc.com/fifa-11/',
+  },
+
+  nordic: {
+    name:     'Nordic hamstring protocol',
+    sport:    'football',
+    what:     'Partner- or strap-anchored eccentric knee flexion. Lower under control, catch yourself, push back up.',
+    evidence: 'contested',
+    note:     'A 2019 meta-analysis across 8,459 athletes reported that injury-prevention programmes including the Nordic hamstring exercise halved hamstring injury rates. A 2021 methodological reappraisal argued the pooled effect is inconclusive because of how the original analyses were constructed. Both positions are live; this is not a settled question.',
+    url:      'https://pubmed.ncbi.nlm.nih.gov/34520846/',
+  },
+
+  copenhagen: {
+    name:     'Adductor Strengthening Programme',
+    sport:    'football',
+    what:     'The Copenhagen adduction exercise, built up over weeks from a short lever to a long one.',
+    evidence: 'moderate',
+    note:     'A cluster-randomised controlled trial in male football players found the programme reduced the prevalence of groin problems across a season.',
+    url:      'https://pubmed.ncbi.nlm.nih.gov/29891614/',
+  },
+
+  norwegian4x4: {
+    name:     'Norwegian 4×4',
+    sport:    'endurance science — NTNU, Trondheim',
+    what:     'Four intervals of four minutes near maximum, three minutes of active recovery between them.',
+    evidence: 'strong',
+    note:     'The 2007 trial compared four training protocols at matched work and found high-intensity 4×4 intervals raised VO₂max substantially more than moderate continuous training. VO₂max is among the strongest modifiable predictors of all-cause mortality.',
+    url:      'https://pubmed.ncbi.nlm.nih.gov/17414804/',
+  },
+
+  hsr: {
+    name:     'Heavy Slow Resistance',
+    sport:    'sports medicine — tendon rehabilitation',
+    what:     'Heavy loading through a full range at a deliberate tempo, roughly three seconds up and three seconds down. A loading scheme rather than a movement.',
+    evidence: 'moderate',
+    note:     'A randomised controlled trial in Achilles tendinopathy found heavy slow resistance produced outcomes comparable to eccentric training at twelve weeks, with better patient satisfaction and far lower time cost.',
+    url:      'https://pubmed.ncbi.nlm.nih.gov/26018970/',
+  },
+
+};
+
+/* Keyed by the movement name exactly as it appears in LIB. A movement not listed
+   here has no source and shows nothing — an absent source is information too, and
+   "no source" written out would be noise on two hundred lines. */
+const SOURCED = {
+
+  // FIFA 11+
+  'Plank':                    {s:'fifa11', as:'The Bench'},
+  'Side plank':               {s:'fifa11', as:'Sideways Bench'},
+  'Side plank with hip dip':  {s:'fifa11', as:'Sideways Bench — raise and lower hip'},
+  'Nordic hamstring curl':    {s:'fifa11', as:'Hamstrings, advanced'},
+  'Nordic curl, assisted':    {s:'fifa11', as:'Hamstrings, beginner'},
+  'Walking lunge':            {s:'fifa11', as:'Walking Lunges'},
+  'Bodyweight squat':         {s:'fifa11', as:'Squats with toe raise', approx:'The 11+ version adds a calf raise at the top.'},
+  'Box jump':                 {s:'fifa11', as:'Box Jumps'},
+  'Lateral bound':            {s:'fifa11', as:'Lateral Jumps', approx:'The 11+ version is continuous for 30 seconds rather than sets of bounds.'},
+
+  // Nordic hamstring protocol
+  'Slider hamstring curl':    {s:'nordic', approx:'Same eccentric emphasis, different implement. The trials used the partner-anchored version.'},
+
+  // Adductor Strengthening Programme
+  'Copenhagen plank':                 {s:'copenhagen', as:'Copenhagen adduction, long lever'},
+  'Copenhagen plank, short lever':    {s:'copenhagen', as:'Copenhagen adduction, short lever'},
+
+  // Heavy Slow Resistance
+  'Heavy slow leg press':     {s:'hsr'},
+  'Heavy slow calf raise':    {s:'hsr'},
+  'Heavy slow split squat':   {s:'hsr'},
+
+};
+
+/* The two Nordic entries belong to two protocols at once: the movement is the
+   subject of the Nordic trials, and it is also part of the 11+. Kept as a second
+   map rather than making every SOURCED value an array, so the common case — one
+   protocol — stays a plain object. sourcesFor() is the only way either is read,
+   so both are always reachable and neither can be forgotten. */
+const ALSO_SOURCED = {
+  'Nordic hamstring curl': {s:'nordic'},
+  'Nordic curl, assisted': {s:'nordic'},
+};
+
+// Every protocol a movement belongs to, in the order they should be read.
+// Empty for almost everything, which is the point.
+function sourcesFor(name) {
+  return [SOURCED[name], ALSO_SOURCED[name]]
+    .filter(m => m && SOURCES[m.s])
+    .map(m => ({...m, src: SOURCES[m.s]}));
+}
+
+// Every movement belonging to a protocol, for the protocols page.
+const movementsFrom = key => LIB
+  .filter(x => sourcesFor(x.n).some(m => m.s === key))
+  .filter((x, i, all) => all.findIndex(y => y.n === x.n) === i);
+
+/* movements.js shares global scope with the page that loads it, and both the builder
+   and Sessions already declare `esc` — a second const of that name is a redeclaration
+   error that takes the whole page down. Hence a name of its own. */
+const hesc = v => String(v == null ? '' : v)
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/* The provenance line under a movement on a card. Nothing at all when there is no
+   source. "contested" is the only grade that takes the signal colour — it is the
+   only one that is a warning rather than a description. */
+function sourceTag(it) {
+  const name = it && (it.name || it.n);
+  return sourcesFor(name).map(m => {
+    const s = m.src;
+    const as = (m.as && m.as !== name)
+      ? ` <span class="sas">Called &ldquo;${hesc(m.as)}&rdquo; there.</span>` : '';
+    const ap = m.approx ? ` <span class="sap">${hesc(m.approx)}</span>` : '';
+    return `<span class="src">From <a href="${hesc(s.url)}" target="_blank" rel="noopener">`
+         + `${hesc(s.name)}</a> &mdash; ${hesc(s.sport.split(' — ')[0])} &middot; evidence: `
+         + `<b class="ev ev-${hesc(s.evidence)}">${hesc(s.evidence)}</b>${as}${ap}</span>`;
+  }).join('');
+}
 
 /* A starting load in kg for someone of ordinary strength, used to prefill the log on a
    saved session so there is something to correct rather than an empty box. Nobody's real
@@ -132,7 +464,7 @@ const START_KG = {
   // squat
   'Back squat':50, 'Front squat':35, 'Goblet squat':18, 'Leg press':80,
   'Bulgarian split squat':12, 'Walking lunge':12, 'Step-up':12, 'Bodyweight squat':'BW',
-  'Cossack squat':'BW', 'Deep ATG squat':20, 'Box jump':'BW',
+  'Cossack squat':'BW', 'Deep ATG squat':20,
   // push
   'Barbell bench press':45, 'Dumbbell bench press':18, 'Incline dumbbell press':14,
   'Overhead press':30, 'Dumbbell shoulder press':12, 'Push-up':'BW', 'Loaded push-up':10,
@@ -172,7 +504,12 @@ function lastLoggedSets(name, done) {
 
 // "3 × 6–10" is 3 sets of 6; "8–12 reps" is 8. The bottom of the range, not the top.
 const setCount   = d => { const m = (d || '').match(/^(\d+)\s*×/); return m ? Math.min(8, Math.max(1, +m[1])) : 3; };
-const targetReps = d => { const m = (d || '').match(/(\d+)\s*[–—-]\s*(\d+)/); return m ? m[1] : ''; };
+const targetReps = d => {
+  const range = (d || '').match(/(\d+)\s*[–—-]\s*(\d+)/);
+  if (range) return range[1];
+  const fixed = (d || '').match(/^\s*\d+\s*×\s*(\d+)/);   // "4 × 5 each side"
+  return fixed ? fixed[1] : '';
+};
 const startLoad  = n => { const v = START_KG[n]; return v == null ? '' : String(v); };
 
 // What you lifted last time wins, set by set; otherwise an ordinary starting load.
@@ -263,7 +600,7 @@ const techNote  = t => (TECHNIQUE[t] || TECHNIQUE.s)[1];
 /* Role: what a movement can carry, not what it trains. Ordered — a session is written
    heaviest first, and ROLES is that order. */
 const ROLES = {
-  main: ['Main lift', 'can anchor the session'],
+  main: ['Main lift', 'the heaviest thing you do that day'],
   sec:  ['Secondary', 'substantial, but not the anchor'],
   acc:  ['Accessory', 'assistance and isolation'],
 };
@@ -448,14 +785,27 @@ function focusSequence(keys) {
   return out;
 }
 
-// Everything that fits the slot: the pattern filter first, then the best role the slot
-// will settle for. Returns the pool and the role it actually found, because "we asked for
-// a main and got a secondary" is worth knowing further up.
-function slotPool(slot, equip, avoid, used) {
-  const all = eligible(slot.p, equip, avoid, used);
+/* Everything that fits the slot: the pattern filter first, then the best role the slot
+   will settle for. Returns the pool and the role it actually found, because "we asked for
+   a main and got a secondary" is worth knowing further up.
+
+   `drawn` is the set of patterns this block has already used. On an either|or slot it
+   breaks the tie towards the side that has not been used: a five-exercise full body wraps
+   back to the hinge-or-squat slot, and without this it could answer "squat" twice and
+   never train a hinge. It is a tie-break inside a role and not above it — a hinge
+   accessory is not a better answer than a squat secondary, it is just a fresher one. */
+function slotPool(slot, equip, avoid, used, drawn, test) {
+  const all = eligible(slot.p, equip, avoid, used).filter(x => !test || test(x));
+  const sides = String(slot.p).split('|');
+  const fresh = (drawn && sides.length > 1) ? sides.filter(p => !drawn.has(p)) : [];
   for (const r of (SLOT_ROLES[slot.r] || SLOT_ROLES.acc)) {
     const pool = all.filter(x => roleOf(x) === r);
-    if (pool.length) return {pool, role: r};
+    if (!pool.length) continue;
+    if (fresh.length) {
+      const unused = pool.filter(x => fresh.includes(x.p));
+      if (unused.length) return {pool: unused, role: r};
+    }
+    return {pool, role: r};
   }
   return {pool: [], role: null};
 }
@@ -479,20 +829,65 @@ function orderStrength(items) {
    Only the first main slot stays a main. A five-exercise block wraps back round to the
    start of the sequence, and two focuses merged round-robin can put two main slots in a
    row; both would otherwise give a second main. */
-function drawStrength(seq, nEx, take, notes) {
-  const items = [];
+/* Two things a session should have, if the pool can supply them.
+
+   The library was about 95% sagittal before v2, and a draw left to itself will
+   happily write five movements that all push and pull along the same line. Both
+   sports here are rotational, and one side at a time is where an imbalance shows
+   up. So: at least one movement out of the sagittal plane, and at least one
+   unilateral.
+
+   Both are soft. They are a repair after the draw, not a filter during it — a
+   filter would bend every slot towards variety, and these are session-level
+   wants, not slot-level ones. If nothing in the pool satisfies one, the session
+   is written without it rather than failing. */
+const VARIETY = [
+  {name: 'plane',      test: x => !!x.pl && x.pl !== 'sag'},
+  {name: 'unilateral', test: x => !!x.u},
+];
+
+/* Trade one drawn movement for another in the same slot that satisfies `test`.
+   Works backwards from the last movement, so an accessory is disturbed before
+   the main lift. Never gives up the only movement meeting an invariant that is
+   already met — fixing the plane must not cost the unilateral. */
+function nudge(items, slots, test, take, used, protect) {
+  if (!items.length || items.some(test)) return false;
+  for (let i = items.length - 1; i >= 0; i--) {
+    const was = items[i];
+    if ((protect || []).some(p => p(was) && items.filter(p).length === 1)) continue;
+    used.delete(was.name);
+    // the other patterns still standing, so a repair cannot undo the either|or rule
+    const others = new Set(items.filter((_, j) => j !== i).map(x => x.p).filter(Boolean));
+    const alt = take(slots[i].p, slots[i].r, others, test);
+    if (alt) { items[i] = alt; return true; }
+    used.add(was.name);
+  }
+  return false;
+}
+
+function drawStrength(seq, nEx, take, notes, used) {
+  const items = [], slots = [];
+  const drawn = new Set();       // the patterns actually used, not the slots asked for
   let mainTaken = false;
   for (let i = 0; i < nEx; i++) {
     const slot = seq[i % seq.length];
     const want = (slot.r === 'main' && mainTaken) ? 'sec' : slot.r;
-    const it = take(slot.p, want);
+    const it = take(slot.p, want, drawn);
     if (!it) {
       (notes || []).push('No ' + slot.p.replace('|', ' or ') + ' movement available with those settings.');
       continue;
     }
     if (roleOf(it) === 'main') mainTaken = true;
+    // the movement's own pattern, which for an either|or slot is one side of it
+    drawn.add(it.p || movementFor(it).p);
     items.push(it);
+    slots.push({p: slot.p, r: want});
   }
+  if (used) VARIETY.forEach(v => {
+    if (items.some(v.test)) return;
+    const protect = VARIETY.filter(o => o !== v && items.some(o.test)).map(o => o.test);
+    nudge(items, slots, v.test, take, used, protect);
+  });
   return orderStrength(items);
 }
 
@@ -526,6 +921,14 @@ function swapNote(before, after) {
   return 'Same slot · same ' + same.join(', same ');
 }
 
+/* Some prescriptions name their own sets. "4 × 6, 3 sec up and 3 sec down" is the whole
+   of Heavy Slow Resistance, tempo included, and "4 × 5 each side" is what a pistol squat
+   is worth — neither is a rep range waiting for a set count in front of it. A movement
+   that gives a bare range gets the block's set count; one that already counts its own
+   keeps what it says, or you get "3 × 4 × 6". */
+const ownsSets = d => /^\s*\d+\s*×/.test(String(d || ''));
+const withSets = (sets, reps) => ownsSets(reps) ? String(reps) : sets + ' × ' + reps;
+
 /* The prescription a swapped-in movement should carry. A strength movement keeps the set
    count the block was written with and brings its own reps — swapping a deadlift for a
    good morning has to change the numbers, which is the whole point. Everything else owns
@@ -535,6 +938,7 @@ function detailFor(after, prevDetail, pattern) {
   const p = String(pattern || after.p || '').split('|')[0];
   const own = after.d || REPS[p] || '8–12';
   if (!LOGGABLE.has(p)) return after.d || prevDetail || '';
+  if (ownsSets(own)) return own;
   const m = String(prevDetail || '').match(/^(\d+)\s*×\s*/);
   return m ? m[1] + ' × ' + own : own;
 }
