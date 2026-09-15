@@ -72,6 +72,35 @@ audience. The N=1 voice does not change.
   it prefers the side the block has not used yet — a full body session
   does not get to train the squat twice and skip the hinge. That is a
   tie-break inside a role, never above it.
+- Every movement carries a demand, dm 1-3: 1 you could do it on a
+  red-recovery day, 2 real work and repeatable, 3 it costs you
+  something. It is not technique — a supine twist asks for no skill and
+  costs nothing, a Jefferson curl asks for both. Each block asks for
+  Light, Working or Hard, defaulting to Working everywhere including
+  mobility. It is a preference, not a filter: a level that the pool
+  cannot supply falls towards the middle and then to anything, so a
+  block is never returned empty over it.
+- A session gets at least one movement out of the sagittal plane and at
+  least one that works a side at a time, where the pool can supply
+  them. These are repairs made after the draw, not filters during it,
+  and they may go unsatisfied. Never fail a session over them.
+- The rules in the draw have a fixed order of authority. Where two
+  disagree, the higher number yields:
+
+      1. Readiness caps       hard — never overridden
+      2. Avoid tags           hard — never overridden
+      3. Equipment ceiling    hard
+      4. Role and slot shape  firm — falls back down the ladder
+      5. Demand preference    soft — falls towards the middle
+      6. Variety repairs      softest — goes unsatisfied rather than
+                              violating anything above it
+
+  A repair may never escalate demand past a cap. That is the mistake
+  this list exists to prevent: the only transverse hinge in the library
+  is dm 3, so the plane repair reached past a red readiness cap to get
+  it. A soft rule that cannot be satisfied inside the rules above it is
+  left unsatisfied. Any new soft rule joins at 6 unless the owner says
+  otherwise.
 - A strength movement's prescription lives on the movement, like a
   mobility one's already does. Reps keyed by pattern are a fallback for
   a movement that has none, not the normal path: a deadlift and a good

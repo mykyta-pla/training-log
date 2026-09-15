@@ -320,6 +320,39 @@ test('the library serves Hard everywhere except the neck, which is known', () =>
     'm_neck gained a dm 3 movement — the Hard fallback test above assumes it has none');
 });
 
+console.log('\nprecedence — the order of authority in CLAUDE.md');
+
+test('the three hard rules hold under maximum pressure', () => {
+  // red band capping Hard to Light, five avoid tags, dumbbells only: the case where
+  // every soft rule has the strongest possible reason to reach past a hard one
+  const avoid = ['floor', 'grip', 'overhead', 'deepknee', 'jump'];
+  const cap = M.capDemand('hard', 'light');
+  for (let i = 0; i < 400; i++) {
+    const t = dmTaker(2, cap, avoid);
+    for (const x of M.drawStrength(M.focusSequence(['full']), 5, t, [], t.used)) {
+      assert.ok(x.dm <= 2, `1. readiness cap: ${x.name} is dm ${x.dm}`);
+      assert.ok(!x.a.some(g => avoid.includes(g)), `2. avoid tags: ${x.name} has ${x.a}`);
+      assert.ok(x.e <= 2, `3. equipment: ${x.name} needs e${x.e}`);
+    }
+  }
+});
+
+test('a variety repair yields rather than breaking a rule above it', () => {
+  // the case that produced the rule: the only transverse hinge in the library is dm 3,
+  // so at Light the plane repair can only be satisfied by escalating demand. It must
+  // decline instead.
+  const transHinge = M.LIB.filter(x => x.p === 'hinge' && x.pl !== 'sag');
+  assert.strictEqual(transHinge.length, 1, 'the library gained another non-sagittal hinge');
+  assert.strictEqual(transHinge[0].dm, 3, transHinge[0].n + ' is no longer dm 3');
+  for (let i = 0; i < 400; i++) {
+    const t = dmTaker(3, 'light');
+    const items = M.drawStrength(M.focusSequence(['full']), 5, t, [], t.used);
+    assert.ok(items.every(x => x.dm <= 2), '6 escalated 5: ' + items.map(x => x.name + '/' + x.dm));
+    const pats = items.map(x => x.p);
+    assert.ok(pats.includes('hinge') && pats.includes('squat'), '6 broke 4: ' + pats);
+  }
+});
+
 console.log('\nvariety: plane and unilateral');
 
 const sagittal = x => !!x.pl && x.pl !== 'sag';
