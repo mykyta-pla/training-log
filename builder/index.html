@@ -197,9 +197,38 @@
 
     <h2>Blocks</h2>
     <p class="hint">Any combination. Order is fixed: mobility, cardio, strength, core, finisher.</p>
+    <p class="alloc"><output id="allocline">&nbsp;</output>
+      <button type="button" class="ghost tiny" id="t_reset">Reset the minutes</button></p>
+    <p class="status err" id="allocerr" hidden></p>
+
+    <details class="how">
+      <summary>How demand and minutes work</summary>
+      <p class="hint">Each block asks for a level of demand and a number of minutes. Demand
+      is a preference read off the movement itself, not a filter: at Hard the block draws
+      the movements that cost you something, and where the pool hasn&rsquo;t got them it
+      settles for Working rather than coming back empty. Readiness outranks it &mdash; a red
+      band caps every block at Light and says so.</p>
+      <p class="hint">The minutes start as shares of the session length, so they scale when
+      you change it, and they have floors: mobility 8, strength 15, cardio 10, core 4,
+      finisher 4. Mobility&rsquo;s floor is 8 rather than 6 because end-range work needs time
+      under tension &mdash; 6 only ever worked when the drills were passive. You can&rsquo;t
+      allocate more than the session has.</p>
+    </details>
 
     <div class="blk">
       <label class="tog"><input type="checkbox" id="b_mob" checked><span>Mobility</span></label>
+      <div class="bctl" id="c_mob">
+        <div class="chips dm" id="dm_mob" role="group" aria-label="Mobility demand">
+          <button type="button" class="chip" data-v="light">Light</button>
+          <button type="button" class="chip on" data-v="working">Working</button>
+          <button type="button" class="chip" data-v="hard">Hard</button>
+        </div>
+        <div class="step" role="group" aria-label="Mobility minutes">
+          <button type="button" class="sdn" data-b="mob" aria-label="One minute less on mobility">&minus;</button>
+          <output class="smin" id="t_mob">0</output><span class="sunit">min</span>
+          <button type="button" class="sup" data-b="mob" aria-label="One minute more on mobility">+</button>
+        </div>
+      </div>
       <div class="sub" id="s_mob">
         <p class="hint">Which areas. Leave all off and it picks for you.</p>
         <div class="chips multi" id="mobareas">
@@ -213,6 +242,18 @@
 
     <div class="blk">
       <label class="tog"><input type="checkbox" id="b_car"><span>Cardio</span></label>
+      <div class="bctl" id="c_car">
+        <div class="chips dm" id="dm_car" role="group" aria-label="Cardio demand">
+          <button type="button" class="chip" data-v="light">Light</button>
+          <button type="button" class="chip on" data-v="working">Working</button>
+          <button type="button" class="chip" data-v="hard">Hard</button>
+        </div>
+        <div class="step" role="group" aria-label="Cardio minutes">
+          <button type="button" class="sdn" data-b="car" aria-label="One minute less on cardio">&minus;</button>
+          <output class="smin" id="t_car">0</output><span class="sunit">min</span>
+          <button type="button" class="sup" data-b="car" aria-label="One minute more on cardio">+</button>
+        </div>
+      </div>
       <div class="sub" id="s_car">
         <div class="chips" id="carvar">
           <button type="button" class="chip on" data-v="zone2">Zone 2 steady</button>
@@ -229,6 +270,18 @@
 
     <div class="blk">
       <label class="tog"><input type="checkbox" id="b_str" checked><span>Strength</span></label>
+      <div class="bctl" id="c_str">
+        <div class="chips dm" id="dm_str" role="group" aria-label="Strength demand">
+          <button type="button" class="chip" data-v="light">Light</button>
+          <button type="button" class="chip on" data-v="working">Working</button>
+          <button type="button" class="chip" data-v="hard">Hard</button>
+        </div>
+        <div class="step" role="group" aria-label="Strength minutes">
+          <button type="button" class="sdn" data-b="str" aria-label="One minute less on strength">&minus;</button>
+          <output class="smin" id="t_str">0</output><span class="sunit">min</span>
+          <button type="button" class="sup" data-b="str" aria-label="One minute more on strength">+</button>
+        </div>
+      </div>
       <div class="sub" id="s_str">
         <p class="hint">Focus &mdash; combine them if you want.</p>
         <div class="chips multi" id="strfocus">
@@ -268,10 +321,34 @@
 
     <div class="blk">
       <label class="tog"><input type="checkbox" id="b_core" checked><span>Core</span></label>
+      <div class="bctl" id="c_core">
+        <div class="chips dm" id="dm_core" role="group" aria-label="Core demand">
+          <button type="button" class="chip" data-v="light">Light</button>
+          <button type="button" class="chip on" data-v="working">Working</button>
+          <button type="button" class="chip" data-v="hard">Hard</button>
+        </div>
+        <div class="step" role="group" aria-label="Core minutes">
+          <button type="button" class="sdn" data-b="core" aria-label="One minute less on core">&minus;</button>
+          <output class="smin" id="t_core">0</output><span class="sunit">min</span>
+          <button type="button" class="sup" data-b="core" aria-label="One minute more on core">+</button>
+        </div>
+      </div>
     </div>
 
     <div class="blk">
       <label class="tog"><input type="checkbox" id="b_fin"><span>Finisher</span></label>
+      <div class="bctl" id="c_fin">
+        <div class="chips dm" id="dm_fin" role="group" aria-label="Finisher demand">
+          <button type="button" class="chip" data-v="light">Light</button>
+          <button type="button" class="chip on" data-v="working">Working</button>
+          <button type="button" class="chip" data-v="hard">Hard</button>
+        </div>
+        <div class="step" role="group" aria-label="Finisher minutes">
+          <button type="button" class="sdn" data-b="fin" aria-label="One minute less on finisher">&minus;</button>
+          <output class="smin" id="t_fin">0</output><span class="sunit">min</span>
+          <button type="button" class="sup" data-b="fin" aria-label="One minute more on finisher">+</button>
+        </div>
+      </div>
       <div class="sub" id="s_fin">
         <div class="chips" id="finvar">
           <button type="button" class="chip on" data-v="one">One thing</button>
@@ -363,7 +440,8 @@
 
 const CARDIO = {
   zone2:  {n:'Zone 2 steady',   min:20, how:'Conversational pace throughout — you should be able to speak in full sentences. Bike, rower, incline walk or easy run.'},
-  norw:   {n:'Norwegian 4×4',   min:38, how:'10 min warm-up. Then 4 × 4 min at roughly 85–95% of max heart rate, with 3 min of active recovery between each. 5 min cool-down.'},
+  // the one cardio option that is a published protocol: src keys into SOURCES
+  norw:   {n:'Norwegian 4×4',   min:38, src:'norwegian4x4', how:'10 min warm-up. Then 4 × 4 min at roughly 85–95% of max heart rate, with 3 min of active recovery between each. 5 min cool-down.'},
   i3030:  {n:'30/30 intervals', min:15, how:'5 min warm-up, then 30 sec hard / 30 sec easy. Build from 8 rounds. 3 min cool-down.'},
   i102030:{n:'10-20-30',        min:16, how:'5 min warm-up. Blocks of 30 sec easy, 20 sec moderate, 10 sec near-maximal, ×5 continuous. 2 min between blocks, 2–3 blocks.'},
   sprint: {n:'Short sprints',   min:18, how:'8 min warm-up, then 6 × 20 sec near-maximal with 2 min full recovery. Long recoveries are the point — this is not conditioning.'},
@@ -373,6 +451,12 @@ const CARDIO = {
 // Each finisher option draws a different number of movements and shapes them differently.
 // The prescription on the movement itself only survives 'one' — the rest are on a clock,
 // so they write their own.
+const MOB_SUB = {
+  light:   'Pick-and-mix, not a routine. Move through them, don’t grind.',
+  working: 'Pick-and-mix, not a routine. Own the end of each range rather than passing through it.',
+  hard:    'End-range work under tension. Hold the positions that fight back — this is the part you are meant to grind.',
+};
+
 const FIN = {
   one:     {n:'One thing', ex:1, min:6,
             sub:'One movement, done properly. Its own prescription, not a race.'},
@@ -408,6 +492,11 @@ const $$ = s => [...document.querySelectorAll(s)];
 const esc = s => String(s == null ? '' : s).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
 const fmtDate = iso => new Date(iso).toLocaleDateString(undefined, {day:'2-digit', month:'short', year:'2-digit'});
 
+// The five blocks, in the order a session is written. Declared here because the chip
+// groups below are registered against them, before the allocation code that uses them.
+const BLOCK_NAME = {mob:'mobility', car:'cardio', str:'strength', core:'core', fin:'finisher'};
+const KEYS = ['mob', 'car', 'str', 'core', 'fin'];
+
 function chipGroup(id, multi) {
   const root = document.getElementById(id);
   root.addEventListener('click', e => {
@@ -418,11 +507,14 @@ function chipGroup(id, multi) {
     if (id === 'carvar')   showCardioInfo();
     if (id === 'finvar')   showFinisherInfo();
     if (id === 'fresh')    showFreshHint();
+    // the length, and what cardio or the finisher needs, all change what the shares come to
+    if (id === 'dur' || id === 'carvar' || id === 'finvar') resetTime();
     savePrefs();
   });
 }
 ['dur','equip','carvar','finvar','strfmt','fresh'].forEach(id => chipGroup(id, false));
 ['mobareas','avoid','strfocus'].forEach(id => chipGroup(id, true));
+KEYS.forEach(k => chipGroup('dm_' + k, false));
 
 const one  = id => document.querySelector('#' + id + ' .chip.on')?.dataset.v;
 const many = id => $$('#' + id + ' .chip.on').map(c => c.dataset.v);
@@ -448,7 +540,9 @@ function showFinisherInfo() {
 }
 function showCardioInfo() {
   const v = CARDIO[one('carvar')];
-  $('#carinfo').textContent = v ? v.how + ' Needs at least ' + v.min + ' min.' : '';
+  $('#carinfo').innerHTML = v
+    ? esc(v.how + ' Needs at least ' + v.min + ' min.') + sourceLine(v.src)
+    : '';
 }
 function showFreshHint() {
   const n = +one('fresh');
@@ -459,10 +553,121 @@ function showFreshHint() {
 
 [['b_mob','s_mob'],['b_car','s_car'],['b_str','s_str'],['b_fin','s_fin']].forEach(([cb, sub]) => {
   const box = $('#'+cb), panel = $('#'+sub);
-  const sync = () => { panel.classList.toggle('off', !box.checked); savePrefs(); };
+  const sync = () => { panel.classList.toggle('off', !box.checked); resetTime(); savePrefs(); };
   box.addEventListener('change', sync);
   panel.classList.toggle('off', !box.checked);
 });
+
+/* ======================================================= time allocation ==
+
+   Minutes start as shares of the session length rather than fixed numbers, so they scale
+   when the length changes instead of leaving a 90-minute session with the same six
+   minutes of mobility a 30-minute one gets.
+
+   Cardio at 25% is a deliberate re-weighting, not arithmetic: VO2max is among the
+   strongest modifiable predictors of all-cause mortality, and the builder used to treat
+   cardio as an optional extra bolted on at the end. Strength drops from about 70% to 48%,
+   and only when cardio is actually selected. */
+const SHARE_CARDIO = {mob: 12, car: 25, str: 48, core: 7, fin: 8};
+const SHARE_PLAIN  = {mob: 14, str: 69, core: 8, fin: 9};
+
+/* Floors, in minutes. Mobility's is 8 rather than the 6 it used to get, deliberately:
+   end-range work needs time under tension, and 6 minutes only ever worked because the
+   drills were passive. Cardio and the finisher take the greater of the block floor and
+   what the chosen variant actually needs — a Norwegian 4×4 is four four-minute intervals
+   with recovery, so calling ten minutes of it a 4×4 would be a lie. */
+const FLOOR = {mob: 8, car: 10, str: 15, core: 4, fin: 4};
+const floors = (want, carMin, finMin) => ({
+  mob:  want.mob  ? FLOOR.mob : 0,
+  car:  want.car  ? Math.max(FLOOR.car, carMin || 0) : 0,
+  str:  want.str  ? FLOOR.str : 0,
+  core: want.core ? FLOOR.core : 0,
+  fin:  want.fin  ? Math.max(FLOOR.fin, finMin || 0) : 0,
+});
+
+
+// Shares across whichever blocks are on, renormalised, then raised to their floors and
+// trimmed back to the total. Returns null when the floors alone do not fit.
+function allocate(total, want, carMin, finMin) {
+  const fl = floors(want, carMin, finMin);
+  const floorTotal = KEYS.reduce((a, k) => a + fl[k], 0);
+  if (floorTotal > total) return null;
+
+  const table = want.car ? SHARE_CARDIO : SHARE_PLAIN;
+  const on = KEYS.filter(k => want[k]);
+  const sum = on.reduce((a, k) => a + (table[k] || 0), 0) || 1;
+  const out = {mob:0, car:0, str:0, core:0, fin:0};
+  on.forEach(k => { out[k] = Math.max(fl[k], Math.round(total * (table[k] || 0) / sum)); });
+
+  // rounding and the floors both push the total up; take it back off whatever is furthest
+  // above its own floor, so a block already at its minimum is never the one squeezed
+  let over = KEYS.reduce((a, k) => a + out[k], 0) - total;
+  while (over > 0) {
+    const give = on.filter(k => out[k] > fl[k]).sort((a, b) => (out[b] - fl[b]) - (out[a] - fl[a]))[0];
+    if (!give) break;
+    out[give]--; over--;
+  }
+  let under = total - KEYS.reduce((a, k) => a + out[k], 0);
+  if (under > 0 && on.length) { out[want.str ? 'str' : on[0]] += under; }
+  return out;
+}
+
+let TIME = {mob:0, car:0, str:0, core:0, fin:0};
+
+const wantNow = () => ({mob:$('#b_mob').checked, car:$('#b_car').checked, str:$('#b_str').checked,
+                        core:$('#b_core').checked, fin:$('#b_fin').checked});
+const carMinNow = () => (CARDIO[one('carvar')] || {}).min || 0;
+const finMinNow = () => (FIN[one('finvar')] || FIN.one).min || 0;
+
+// Put every block back to its share of the total.
+function resetTime() {
+  const a = allocate(+one('dur'), wantNow(), carMinNow(), finMinNow());
+  TIME = a || {mob:0, car:0, str:0, core:0, fin:0};
+  showTime();
+}
+
+function showTime() {
+  const want = wantNow(), total = +one('dur');
+  const fl = floors(want, carMinNow(), finMinNow());
+  const used = KEYS.reduce((a, k) => a + (want[k] ? TIME[k] : 0), 0);
+  const spare = total - used;
+
+  KEYS.forEach(k => {
+    const box = $('#c_' + k); if (!box) return;
+    box.classList.toggle('off', !want[k]);
+    $('#t_' + k).textContent = want[k] ? TIME[k] : 0;
+    box.querySelector('.sup').disabled = spare <= 0;
+    box.querySelector('.sdn').disabled = TIME[k] <= fl[k];
+  });
+
+  const bad = allocate(total, want, carMinNow(), finMinNow()) === null;
+  const err = $('#allocerr');
+  if (bad) {
+    const tight = KEYS.filter(k => want[k]).map(k => `${BLOCK_NAME[k]} needs ${fl[k]}`);
+    err.textContent = `That doesn't fit in ${total} min: ${tight.join(', ')}. `
+      + `Drop a block, or give it ${KEYS.reduce((a,k)=>a+fl[k],0)} min.`;
+    err.hidden = false;
+  } else err.hidden = true;
+
+  $('#allocline').textContent = KEYS.some(k => want[k])
+    ? `${used} of ${total} min` + (spare > 0 ? ` · ${spare} spare` : spare < 0 ? ` · ${-spare} over` : ' · nothing spare')
+    : 'No blocks selected.';
+}
+
+$('#cfg').addEventListener('click', e => {
+  const up = e.target.closest('.sup'), dn = e.target.closest('.sdn');
+  if (!up && !dn) return;
+  const k = (up || dn).dataset.b;
+  const want = wantNow(), total = +one('dur');
+  const fl = floors(want, carMinNow(), finMinNow());
+  const used = KEYS.reduce((a, x) => a + (want[x] ? TIME[x] : 0), 0);
+  // over-allocating is blocked rather than warned about
+  if (up && used >= total) return;
+  if (dn && TIME[k] <= fl[k]) return;
+  TIME[k] += up ? 1 : -1;
+  showTime(); savePrefs();
+});
+$('#t_reset').addEventListener('click', () => { resetTime(); savePrefs(); });
 
 /* ============================================================ preferences == */
 
@@ -494,13 +699,18 @@ function savePrefs() {
     strfocus: many('strfocus'), mobareas: many('mobareas'), avoid: many('avoid'),
     blocks: {mob:$('#b_mob').checked, car:$('#b_car').checked, str:$('#b_str').checked,
              core:$('#b_core').checked, fin:$('#b_fin').checked},
+    // the builder opens where it was left: demand and minutes alongside duration and kit
+    demand: Object.fromEntries(KEYS.map(k => [k, one('dm_' + k)])),
+    time: {...TIME},
   });
   // movements.js reads this on its own, from any page
   setUseCommunity($('#b_comm').checked);
 }
 function loadPrefs() {
   $('#b_comm').checked = useCommunity();
-  const p = read(K.prefs, null); if (!p) return;
+  // nothing saved yet: the blocks still need their share of the minutes, or the first
+  // visit opens on an allocation of zero
+  const p = read(K.prefs, null); if (!p) { resetTime(); return; }
   ['dur','equip','carvar','finvar','strfmt','fresh'].forEach(k => p[k] && setOne(k, p[k]));
   // strfocus was a single value before it could be combined
   if (p.strfocus) setMany('strfocus', [].concat(p.strfocus));
@@ -511,8 +721,16 @@ function loadPrefs() {
   }
   [['b_mob','s_mob'],['b_car','s_car'],['b_str','s_str'],['b_fin','s_fin']].forEach(([cb,sub]) =>
     $('#'+sub).classList.toggle('off', !$('#'+cb).checked));
+  if (p.demand) KEYS.forEach(k => p.demand[k] && setOne('dm_' + k, p.demand[k]));
+  // saved minutes only stand up against the session they were saved for; anything else
+  // gets the shares again rather than a set of numbers that no longer add up
+  const a = allocate(+one('dur'), wantNow(), carMinNow(), finMinNow());
+  const saved = p.time && KEYS.every(k => typeof p.time[k] === 'number');
+  const fits = saved && KEYS.filter(k => wantNow()[k]).reduce((x, k) => x + p.time[k], 0) <= +one('dur');
+  TIME = (saved && fits && a) ? {...p.time} : (a || {mob:0,car:0,str:0,core:0,fin:0});
 }
-['b_core', 'b_comm'].forEach(id => $('#'+id).addEventListener('change', savePrefs));
+$('#b_core').addEventListener('change', () => { resetTime(); savePrefs(); });
+$('#b_comm').addEventListener('change', savePrefs);
 
 /* ============================================================== readiness == */
 
@@ -538,7 +756,7 @@ function readReadiness() {
 // Whoop's own bands: red under 34, amber to 66, green above. The adjustments below are
 // conventions, not trial evidence — they are deliberately conservative and always explained.
 function verdict(r) {
-  const out = {band:null, cap:null, dropFin:false, forceMob:false, ease:1, why:[]};
+  const out = {band:null, cap:null, dmCap:null, dropFin:false, forceMob:false, ease:1, why:[]};
   if (!r || r.rec == null) return out;
   const rec = r.rec;
   let band = rec >= 67 ? 'green' : rec >= 34 ? 'amber' : 'red';
@@ -566,12 +784,12 @@ function verdict(r) {
   out.band = band;
   if (band === 'green') out.why.unshift(`recovery ${rec}% — full session`);
   if (band === 'amber') {
-    out.cap = 60; out.dropFin = true;
-    out.why.unshift(`recovery ${rec}% — finisher dropped, capped at 60 min`);
+    out.cap = 60; out.dropFin = true; out.dmCap = 'working';
+    out.why.unshift(`recovery ${rec}% — finisher dropped, capped at 60 min, nothing above Working`);
   }
   if (band === 'red') {
-    out.cap = 45; out.dropFin = true; out.forceMob = true; out.ease = 0.7;
-    out.why.unshift(`recovery ${rec}% — mobility kept, strength cut back, capped at 45 min`);
+    out.cap = 45; out.dropFin = true; out.forceMob = true; out.ease = 0.7; out.dmCap = 'light';
+    out.why.unshift(`recovery ${rec}% — mobility kept, strength cut back, capped at 45 min, every block held to Light`);
     out.why.push('on a day like this a walk or a yoga class is a defensible alternative');
   }
   return out;
@@ -771,26 +989,29 @@ function build() {
 
   const carVar = CARDIO[one('carvar')];
   const finVar = FIN[one('finvar')] || FIN.one;
-  const mins = {mob: want.mob?6:0, car: want.car?carVar.min:0, str: want.str?12:0,
-                core: want.core?5:0, fin: want.fin?finVar.min:0};
-  const floorTotal = Object.values(mins).reduce((a,b)=>a+b,0);
 
+  // Which block cannot have its floor, named rather than silently given 90 seconds.
+  const fl = floors(want, carVar.min, finVar.min);
+  const floorTotal = KEYS.reduce((a, k) => a + fl[k], 0);
   if (floorTotal > total) {
-    const parts = [];
-    if (want.mob) parts.push('mobility 6');
-    if (want.car) parts.push(carVar.n.toLowerCase() + ' ' + carVar.min);
-    if (want.str) parts.push('strength 12 minimum');
-    if (want.core) parts.push('core 5');
-    if (want.fin) parts.push((finVar.ex === 1 ? 'finisher' : finVar.n.toLowerCase() + ' finisher')
-                             + ' ' + finVar.min);
+    const parts = KEYS.filter(k => want[k]).map(k =>
+      k === 'car' ? `${carVar.n.toLowerCase()} ${fl.car}`
+      : k === 'fin' ? `${finVar.ex === 1 ? 'finisher' : finVar.n.toLowerCase() + ' finisher'} ${fl.fin}`
+      : `${BLOCK_NAME[k]} ${fl[k]}`);
     return {error:`That doesn't fit. ${parts.join(', ')} — ${floorTotal} min against the ${total} you have. `
                 + `You're ${floorTotal-total} min over. Drop a block, or give it ${floorTotal} min.`};
   }
 
-  let spare = total - floorTotal;
-  const time = {...mins};
-  if (want.str) time.str += spare; else if (want.car) time.car += spare;
-  if (want.str && V.ease < 1) time.str = Math.max(12, Math.round(time.str * V.ease));
+  // the minutes on the steppers, re-derived if the readiness cap has just shortened the day
+  const alloc = (KEYS.reduce((a, k) => a + (want[k] ? TIME[k] : 0), 0) > total || !TIME.str)
+    ? allocate(total, want, carVar.min, finVar.min) : TIME;
+  const time = {mob:0, car:0, str:0, core:0, fin:0};
+  KEYS.forEach(k => { time[k] = want[k] ? Math.max(fl[k], (alloc || {})[k] || fl[k]) : 0; });
+  if (want.str && V.ease < 1) time.str = Math.max(fl.str, Math.round(time.str * V.ease));
+
+  // What each block asks of the pool. Readiness outranks the control and says so.
+  const dm = {};
+  KEYS.forEach(k => { dm[k] = capDemand(one('dm_' + k) || 'working', V.dmCap); });
 
   const rec = recencyMap(doneOnly(), depth);
   const used = new Set();
@@ -802,11 +1023,25 @@ function build() {
   // so far, so an either|or slot coming round a second time can favour the other side.
   // `test`, where given, is a hard filter on the candidates — the variety repair
   // asking for a movement out of the sagittal plane, or one that works a side at a time.
+  // The demand of the block being drawn, as a ladder of steps ending unrestricted. It is
+  // ambient rather than an argument so that drawStrength, which knows about slots and
+  // roles and nothing about demand, needs no change at all.
+  let steps = [null];
   const take = (pattern, role, drawn, test) => {
-    const pool = role
-      ? slotPool({p: pattern, r: role}, equip, avoid, used, drawn, test).pool
-      : eligible(pattern, equip, avoid, used);
-    const x = pickFresh(pool, rec);
+    let x = null;
+    // A `test` means this is a variety repair, and those are the softest thing here: they
+    // may go unsatisfied, so they are not allowed to climb the demand ladder to succeed.
+    // Without this, a Light block would reach past its own band for the one transverse
+    // hinge in the library, which is dm 3 — and a red readiness cap would leak.
+    for (const allow of (test ? steps.slice(0, 1) : steps)) {
+      const dmOk = allow ? (m => allow.includes(m.dm)) : null;
+      const filter = (test && dmOk) ? (m => test(m) && dmOk(m)) : (test || dmOk);
+      const pool = role
+        ? slotPool({p: pattern, r: role}, equip, avoid, used, drawn, filter).pool
+        : eligible(pattern, equip, avoid, used).filter(m => !filter || filter(m));
+      x = pickFresh(pool, rec);
+      if (x) break;
+    }
     if (!x) return null;
     used.add(x.n);
     if (rec.has(x.n)) repeated++;
@@ -818,20 +1053,23 @@ function build() {
 
   // mobility
   if (want.mob) {
+    steps = demandSteps(dm.mob);
     let areas = many('mobareas'); if (!areas.length) areas = ['shoulder','hip','spine','neck'];
-    const n = time.mob >= 9 ? 4 : 3, items = [];
+    const n = time.mob >= 12 ? 5 : time.mob >= 9 ? 4 : 3, items = [];
     for (let i = 0; i < n; i++) { const it = take('m_' + areas[i % areas.length], null); if (it) items.push(it); }
     if (items.length) S.blocks.push({key:'mob', title:'Mobility', mins:time.mob,
-      sub:'Pick-and-mix, not a routine. Move through them, don’t grind.', items});
+      sub:MOB_SUB[dm.mob] || MOB_SUB.working, items});
   }
 
   // cardio
-  if (want.car) S.blocks.push({key:'car', title:'Cardio — ' + carVar.n, mins:time.car, sub:carVar.how, items:[]});
+  if (want.car) S.blocks.push({key:'car', title:'Cardio — ' + carVar.n, mins:time.car,
+                               sub:carVar.how, src:carVar.src || '', items:[]});
 
   // strength
   if (want.str) {
     const m = time.str;
     const nEx = m < 14 ? 2 : m < 22 ? 3 : m < 32 ? 4 : 5;
+    steps = demandSteps(dm.str);
     const fmt = one('strfmt'), seq = focusSequence(many('strfocus'));
     const items = drawStrength(seq, nEx, take, S.note, used);
     // each movement's own rep range, captured before a format writes over detail
@@ -867,6 +1105,7 @@ function build() {
 
   // core
   if (want.core) {
+    steps = demandSteps(dm.core);
     const items = [];
     for (let i = 0; i < 2; i++) { const it = take('core', null); if (it) items.push(it); }
     if (items.length) S.blocks.push({key:'core', title:'Core', mins:time.core, sub:'2–3 rounds.', items});
@@ -874,6 +1113,7 @@ function build() {
 
   // finisher
   if (want.fin) {
+    steps = demandSteps(dm.fin);
     const items = [];
     for (let i = 0; i < finVar.ex; i++) { const it = take('fin', null); if (it) items.push(it); }
     if (items.length) {
@@ -944,7 +1184,7 @@ function render(S) {
 
   S.blocks.forEach((b, bi) => {
     h += `<section class="sblk"><h3>${esc(b.title)} <span class="mins">${b.mins} min</span></h3>
-          <p class="sub-note">${esc(b.sub)}</p>`;
+          <p class="sub-note">${esc(b.sub)}${b.src ? sourceLine(b.src) : ''}</p>`;
     if (b.items.length) {
       h += '<ul class="exlist">';
       b.items.forEach((it, ii) => {
@@ -1160,6 +1400,7 @@ $('#cfg').addEventListener('submit', e => {
 /* ===================================================================== init == */
 
 loadPrefs();
+showTime();
 showCardioInfo();
 showFinisherInfo();
 showFreshHint();
